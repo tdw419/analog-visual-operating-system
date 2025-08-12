@@ -1,0 +1,33 @@
+{
+  "path": "test_program.py",
+  "exists": true,
+  "import_ok": true,
+  "has_setup": true,
+  "has_update": true,
+  "has_on_event": true,
+  "setup_ok": true,
+  "update_ok": true,
+  "event_ok": true,
+  "manifest_ok": true,
+  "manifest": [
+    "name",
+    "author",
+    "description",
+    "version",
+    "tags"
+  ],
+  "signature_ok": true,
+  "docstrings_ok": true,
+  "exceptions": [],
+  "warnings": [],
+  "frames_run": 100,
+  "dt": 0.016666666666666666,
+  "logs": [],
+  "performance": {
+    "avg_ms": 0.0003376099903107388,
+    "min_ms": 0.00021400001060101204,
+    "max_ms": 0.0054239999371930026,
+    "over_threshold": 0,
+    "threshold_ms": 5.0
+  }
+}
