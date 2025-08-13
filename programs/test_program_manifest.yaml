@@ -1,0 +1,5 @@
+name: test_program
+author: Jules
+description: A simple program for testing validation.
+version: 1.0.0
+tags: [test, example]

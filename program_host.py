@@ -32,6 +32,11 @@ try:
 except ImportError:
     yaml = None
 
+import hashlib
+import tempfile
+import shutil
+from filelock import FileLock, Timeout
+
 # === Constants & Templates ===
 DEFAULT_ROOTS = ["programs", "examples", "plugins"]
 PROGRAM_INDEX = "program_index.json"
@@ -234,6 +239,73 @@ def list_programs(roots=DEFAULT_ROOTS):
     Path("program_index.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
     print("\n📜 Wrote program_index.json")
 
+# === Atomic Index Operations ===
+INDEX_PATH = Path("programs") / "program_index.json"
+INDEX_LOCK = Path("programs") / ".program_index.lock"
+INDEX_TIMEOUT_SEC = 8
+
+def _sha256_of_text(txt: str) -> str:
+    return hashlib.sha256(txt.encode("utf-8")).hexdigest()[:16]
+
+def _sha256(path: str) -> str:
+    """Calculate SHA256 checksum of a file"""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+def _read_json_safe(path: Path) -> list:
+    if not path.exists():
+        return []
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        # Corrupted or partial—rename aside and start fresh
+        bad = path.with_suffix(".corrupted.json")
+        try:
+            path.rename(bad)
+        except Exception:
+            pass
+        return []
+
+def _write_json_atomic(path: Path, payload: list):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", delete=False, dir=str(path.parent), encoding="utf-8") as tf:
+        json.dump(payload, tf, indent=2)
+        tf.flush()
+        os.fsync(tf.fileno())
+        tmp_name = tf.name
+    os.replace(tmp_name, path)
+
+def update_program_index(entry: dict, index_path: Path = INDEX_PATH, lock_path: Path = INDEX_LOCK):
+    """
+    Atomically merge/update `entry` into program_index.json under a file lock.
+    Keys used for identity:
+      - `name` (required)
+      - `path` (preferred) or `version` as tie-breaker
+    """
+    lock = FileLock(str(lock_path))
+    try:
+        with lock.acquire(timeout=INDEX_TIMEOUT_SEC):
+            index = _read_json_safe(index_path)
+            # replace prior entry for same program
+            def same(e):
+                if e.get("path") and entry.get("path"):
+                    return e["path"] == entry["path"]
+                if e.get("name") == entry.get("name"):
+                    # fallback: name + version
+                    return e.get("version") == entry.get("version")
+                return False
+
+            index = [e for e in index if not same(e)]
+            index.append(entry)
+            # keep stable ordering by name then version
+            index.sort(key=lambda e: (e.get("name",""), e.get("version","")))
+            _write_json_atomic(index_path, index)
+    except Timeout:
+        print("⚠️ program_index.json lock timeout—skipping index update.")
+
 # === Program Validation ===
 REQ_SIGS = {
     "setup": ("ctx",),
@@ -241,7 +313,11 @@ REQ_SIGS = {
     "on_event": ("ctx", "ev"),  # optional hook, but if present must match
 }
 
-def _check_hook_signature(mod, name, required=True):
+def _check_hook_signature(mod: ModuleType, name: str, required: bool = True):
+    """
+    Enforce exact parameter names/arity for PXOS hooks.
+    Returns (ok: bool, err: Optional[str])
+    """
     fn = getattr(mod, name, None)
     if fn is None:
         return (not required), (f"missing {name}()" if required else None)
@@ -249,9 +325,11 @@ def _check_hook_signature(mod, name, required=True):
         return False, f"{name} is not callable"
     try:
         sig = inspect.signature(fn)
-        params = tuple(p.name for p in sig.parameters.values())
+        params = tuple(p.name for p in sig.parameters.values()
+                       if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD))
         if params != REQ_SIGS[name]:
-            return False, f"{name} signature must be {name}({', '.join(REQ_SIGS[name])})"
+            expected = ", ".join(REQ_SIGS[name])
+            return False, f"{name} signature must be {name}({expected})"
         return True, None
     except Exception as e:
         return False, f"{name} signature check failed: {e}"
@@ -264,6 +342,8 @@ def _validate_manifest_for(py_path: Path):
     mpath = py_path.with_name(f"{py_path.stem}_manifest.yaml")
     if not mpath.exists():
         return False, None, f"manifest missing: {mpath.name}"
+    if yaml is None:
+        return False, None, "PyYAML not available to parse manifest (pip install pyyaml)"
     try:
         data = yaml.safe_load(mpath.read_text(encoding="utf-8")) or {}
     except Exception as e:
@@ -285,9 +365,15 @@ def _validate_manifest_for(py_path: Path):
         return False, data, "manifest `tags` must be a list"
     return True, data, None
 
-def _time_update_loop(mod, ctx, frames, dt, threshold_ms=5.0):
+def _time_update_loop(mod: ModuleType, ctx, frames: int, dt: float, threshold_ms: float = 5.0):
+    """
+    Measure per-frame update() wall time.
+    Returns dict: {avg_ms, min_ms, max_ms, over_threshold, threshold_ms}
+    """
     times = []
     over = 0
+    if not hasattr(mod, "update") or not callable(mod.update):
+        return {"avg_ms": 0.0, "min_ms": 0.0, "max_ms": 0.0, "over_threshold": 0, "threshold_ms": threshold_ms}
     for i in range(frames):
         ctx._frame = i
         t0 = time.perf_counter()
@@ -297,7 +383,7 @@ def _time_update_loop(mod, ctx, frames, dt, threshold_ms=5.0):
         if dt_ms > threshold_ms:
             over += 1
     if not times:
-        return {"avg_ms": 0, "min_ms": 0, "max_ms": 0, "over_threshold": 0, "threshold_ms": threshold_ms}
+        return {"avg_ms": 0.0, "min_ms": 0.0, "max_ms": 0.0, "over_threshold": 0, "threshold_ms": threshold_ms}
     return {
         "avg_ms": sum(times)/len(times),
         "min_ms": min(times),
@@ -405,17 +491,12 @@ def validate_program(path: str | Path, frames=100, dt=1/60.0, report_path=None, 
 
     # Signature checks
     ok, err = _check_hook_signature(mod, "setup", required=True)
-    if not ok:
-        result["exceptions"].append(err)
-        result["signature_ok"] = False
+    if not ok and err: result["exceptions"].append(err)
     ok, err = _check_hook_signature(mod, "update", required=True)
-    if not ok:
-        result["exceptions"].append(err)
-        result["signature_ok"] = False
+    if not ok and err: result["exceptions"].append(err)
     ok, err = _check_hook_signature(mod, "on_event", required=False)
-    if not ok:
-        result["exceptions"].append(err)
-        result["signature_ok"] = False
+    if not ok and err: result["exceptions"].append(err)
+    result["signature_ok"] = not any("signature" in str(e) or "missing " in str(e) for e in result["exceptions"])
 
     ctx = _DummyCtx()
 
@@ -435,6 +516,7 @@ def validate_program(path: str | Path, frames=100, dt=1/60.0, report_path=None, 
             result["performance"] = perf
         except Exception as e:
             result["exceptions"].append(f"update_error_at_frame_{result.get('frames_run', 0)}: {e}")
+            result["performance"] = {"error": str(e)}
 
     # on_event() smoke test
     if hasattr(mod, "on_event") and callable(mod.on_event):
@@ -444,6 +526,7 @@ def validate_program(path: str | Path, frames=100, dt=1/60.0, report_path=None, 
         except Exception as e:
             result["warnings"].append(f"event_error: {e}")
 
+    result["valid"] = len(result["exceptions"]) == 0
     return result
 
 def print_validation_report(result, frames, ok):
@@ -534,81 +617,78 @@ def scaffold_program(path: str, force: bool = False, is_plugin: bool = False):
     print(f"🗂️ Created manifest at {manifest_path}")
     print(f"Run: python program_host.py --show --program {path}")
 
-def submit_program(file_path: str, force: bool = False, strict_doc: bool = False, verbose: bool = False, require_manifest: bool = False, strict_perf: bool = False, perf_threshold_ms: float = 5.0):
-    """Submit a program to programs/ with a manifest."""
-    src_path = Path(file_path)
-    if not src_path.exists():
-        print(f"❌ File not found: {src_path}")
-        sys.exit(1)
+def submit_program(
+    program_path: str | Path,
+    force: bool = False,
+    frames: int = 100,
+    perf_threshold_ms: float = 5.0,
+    strict_perf: bool = False,
+    require_manifest: bool = True,
+) -> bool:
+    p = Path(program_path)
+    if not p.exists():
+        print(f"❌ File not found: {p}")
+        return False
 
-    result = validate_program(
-        src_path,
-        strict_doc=strict_doc,
-        verbose=verbose,
-        perf_threshold_ms=perf_threshold_ms
+    validation_result = validate_program(
+        p, frames=frames, perf_threshold_ms=perf_threshold_ms
     )
 
-    ok = len(result["exceptions"]) == 0
-
-    if require_manifest and not result.get("manifest_ok", False):
+    ok = validation_result["valid"]
+    if require_manifest and not validation_result.get("manifest_ok", False):
         ok = False
 
-    perf = result.get("performance")
+    perf = validation_result.get("performance")
     if strict_perf and perf and perf["max_ms"] > perf["threshold_ms"]:
         ok = False
 
     if not ok:
-        print_validation_report(result, 100, ok)
-        print(f"❌ Validation failed for {src_path}. Fix issues before submitting.")
-        sys.exit(1)
+        print("❌ Validation failed:")
+        for e in validation_result["errors"]:
+            print(f"  - {e}")
+        return False
+    for w in validation_result["warnings"]:
+        print(f"⚠️ {w}")
 
-    manifest_path = src_path.parent / f"{src_path.stem}_manifest.yaml"
-    if not manifest_path.exists():
-        print(f"❌ Missing manifest: {manifest_path}")
-        print("Generate one with --create-program or create manually.")
-        sys.exit(1)
-
-    # Copy to programs/
     dest_dir = Path("programs")
     dest_dir.mkdir(exist_ok=True)
-    dest_path = dest_dir / src_path.name
-    dest_manifest = dest_dir / manifest_path.name
+    dest_prog = dest_dir / p.name
+    if dest_prog.exists() and not force:
+        print(f"❌ Destination exists: {dest_prog} (use --force to overwrite)")
+        return False
 
-    if dest_path.exists() and not force:
-        confirm = input(f"⚠️ {dest_path} exists. Overwrite? [y/N] ").lower().strip()
-        if confirm != "y":
-            print(f"Submission aborted for {src_path}")
-            sys.exit(1)
+    shutil.copy2(p, dest_prog)
+    manifest_path = p.with_name(f"{p.stem}_manifest.yaml")
+    if manifest_path.exists():
+        shutil.copy2(manifest_path, dest_dir / manifest_path.name)
 
-    dest_path.write_text(src_path.read_text(encoding="utf-8"), encoding="utf-8")
-    dest_manifest.write_text(manifest_path.read_text(encoding="utf-8"), encoding="utf-8")
+    prog_checksum = _sha256(str(dest_prog))
+    man_checksum = _sha256(str(dest_dir / manifest_path.name)) if manifest_path.exists() else None
 
-    # Update program_index.json
-    index_file = dest_dir / "program_index.json"
-    index = []
-    if index_file.exists():
-        try:
-            index = json.loads(index_file.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            print(f"Warning: Could not decode {index_file}, starting fresh.")
-            index = []
-
-    manifest = result["manifest"]
-    program_entry = {
-        "name": src_path.stem,
-        "path": str(dest_path),
-        "description": manifest.get("description", "No description"),
-        "author": manifest.get("author", "Unknown"),
-        "version": manifest.get("version", "1.0.0"),
+    enriched_entry = {
+        "name": validation_result["manifest"].get("name", p.stem),
+        "version": validation_result["manifest"].get("version", "1.0.0"),
+        "author": validation_result["manifest"].get("author", "Unknown"),
+        "description": validation_result["manifest"].get("description", ""),
+        "tags": validation_result["manifest"].get("tags", []),
+        "path": str(dest_prog),
+        "manifest": str(dest_dir / manifest_path.name) if manifest_path.exists() else None,
+        "checksum": {"program_sha256": prog_checksum, "manifest_sha256": man_checksum},
         "last_modified": datetime.now().isoformat(),
-        "tags": manifest.get("tags", []),
+        "perf": {
+            "avg_ms": round(validation_result["performance"].get("avg_ms", 0.0), 3),
+            "max_ms": round(validation_result["performance"].get("max_ms", 0.0), 3),
+            "slow_frames": validation_result["performance"].get("over_threshold", 0),
+            "threshold_ms": perf_threshold_ms
+        },
+        "perf_ok": validation_result["performance"].get("max_ms", 0.0) <= perf_threshold_ms if validation_result.get("performance") else True,
+        "frames_validated": validation_result.get("frames_run", 0)
     }
 
-    index = [entry for entry in index if entry["path"] != str(dest_path)] + [program_entry]
-    index_file.write_text(json.dumps(index, indent=2), encoding="utf-8")
+    update_program_index(enriched_entry)
 
-    print(f"✅ Submitted {src_path} to {dest_path}")
-    print(f"📜 Updated {index_file}")
+    print(f"✅ Submitted to {dest_prog}")
+    return True
 
 # === Context and RegionManager ===
 class Region:
@@ -814,11 +894,10 @@ def main():
         submit_program(
             args.submit_program,
             force=args.force,
-            strict_doc=args.strict_doc,
-            verbose=args.verbose,
-            require_manifest=args.require_manifest,
+            frames=args.validate_frames,
+            perf_threshold_ms=args.perf_threshold_ms,
             strict_perf=args.strict_perf,
-            perf_threshold_ms=args.perf_threshold_ms
+            require_manifest=args.require_manifest,
         )
         sys.exit(0)
 

@@ -1,0 +1,27 @@
+[
+  {
+    "name": "test_program",
+    "version": "1.0.0",
+    "author": "Jules",
+    "description": "A simple program for testing validation.",
+    "tags": [
+      "test",
+      "example"
+    ],
+    "path": "programs/test_program.py",
+    "manifest": "programs/test_program_manifest.yaml",
+    "checksum": {
+      "program_sha256": "a67a171a323feaa50f955616155d172ca316571fa96b2044134b73e2d624a0db",
+      "manifest_sha256": "1a08cdc25edc673bb23d1aba0d1496107214c5821a7a67d7ef0eb4f643a0df03"
+    },
+    "last_modified": "2025-08-13T01:09:44.851775",
+    "perf": {
+      "avg_ms": 0.0,
+      "max_ms": 0.003,
+      "slow_frames": 0,
+      "threshold_ms": 5.0
+    },
+    "perf_ok": true,
+    "frames_validated": 100
+  }
+]
