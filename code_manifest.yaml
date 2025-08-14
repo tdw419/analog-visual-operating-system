@@ -1,0 +1,203 @@
+files:
+- classes: []
+  functions:
+  - docstring: ''
+    name: setup
+    signature: def setup(ctx)
+  - docstring: ''
+    name: update
+    signature: def update(ctx, dt)
+  - docstring: ''
+    name: on_event
+    signature: def on_event(ctx, ev)
+  path: examples/bouncy_bar.py
+- classes:
+  - docstring: ''
+    methods:
+    - docstring: ''
+      name: __init__
+      signature: def __init__(self)
+    - docstring: ''
+      name: set_param
+      signature: def set_param(self, region, key, value)
+    - docstring: ''
+      name: pulse
+      signature: def pulse(self, region, duration)
+    - docstring: ''
+      name: jitter
+      signature: def jitter(self, x, y)
+    - docstring: ''
+      name: add_osc_filter_scope_default
+      signature: def add_osc_filter_scope_default(self, name_prefix, x, y)
+    - docstring: ''
+      name: frame
+      signature: def frame(self)
+    - docstring: ''
+      name: log
+      signature: def log(self, msg)
+    - docstring: ''
+      name: query_state
+      signature: def query_state(self, region)
+    - docstring: ''
+      name: add_connection
+      signature: def add_connection(self, src_region, src_channel, dst_region, dst_channel,
+        cyclic)
+    - docstring: ''
+      name: remove_region
+      signature: def remove_region(self, name)
+    - docstring: ''
+      name: get_logs
+      signature: def get_logs(self)
+    name: _DummyCtx
+  - docstring: ''
+    methods:
+    - docstring: ''
+      name: __init__
+      signature: def __init__(self, name, rect, params, channels, priority)
+    name: Region
+  - docstring: ''
+    methods:
+    - docstring: ''
+      name: __init__
+      signature: def __init__(self)
+    - docstring: ''
+      name: connect
+      signature: def connect(self, src_region, src_channel, dst_region, dst_channel,
+        cyclic)
+    - docstring: ''
+      name: _mark_dirty
+      signature: def _mark_dirty(self, x, y, w, h)
+    - docstring: ''
+      name: add_region
+      signature: def add_region(self, name, rect, params, channels, priority)
+    name: RegionManager
+  - docstring: ''
+    methods:
+    - docstring: ''
+      name: __init__
+      signature: def __init__(self, rm)
+    - docstring: ''
+      name: log
+      signature: def log(self, msg)
+    - docstring: ''
+      name: set_param
+      signature: def set_param(self, region, key, value)
+    - docstring: ''
+      name: pulse
+      signature: def pulse(self, region, duration)
+    - docstring: ''
+      name: jitter
+      signature: def jitter(self, x, y)
+    - docstring: ''
+      name: add_osc_filter_scope_default
+      signature: def add_osc_filter_scope_default(self, name_prefix, x, y)
+    - docstring: ''
+      name: frame
+      signature: def frame(self)
+    - docstring: ''
+      name: query_state
+      signature: def query_state(self, region)
+    - docstring: ''
+      name: add_connection
+      signature: def add_connection(self, src_region, src_channel, dst_region, dst_channel,
+        cyclic)
+    - docstring: ''
+      name: remove_region
+      signature: def remove_region(self, name)
+    - docstring: ''
+      name: on_touch_down
+      signature: def on_touch_down(self, x, y, region)
+    - docstring: ''
+      name: reset_region_defaults
+      signature: def reset_region_defaults(self, region)
+    - docstring: ''
+      name: duplicate_region
+      signature: def duplicate_region(self, original_region)
+    name: Context
+  functions:
+  - docstring: ''
+    name: _iter_program_files
+    signature: def _iter_program_files(roots)
+  - docstring: ''
+    name: _ast_metadata
+    signature: def _ast_metadata(py_path)
+  - docstring: ''
+    name: _load_manifest
+    signature: def _load_manifest(program_path)
+  - docstring: ''
+    name: list_programs
+    signature: def list_programs(roots)
+  - docstring: ''
+    name: _sha256_of_text
+    signature: def _sha256_of_text(txt)
+  - docstring: Calculate SHA256 checksum of a file
+    name: _sha256
+    signature: def _sha256(path)
+  - docstring: ''
+    name: _read_json_safe
+    signature: def _read_json_safe(path)
+  - docstring: ''
+    name: _write_json_atomic
+    signature: def _write_json_atomic(path, payload)
+  - docstring: "Atomically merge/update `entry` into program_index.json under a file\
+      \ lock.\nKeys used for identity:\n  - `name` (required)\n  - `path` (preferred)\
+      \ or `version` as tie-breaker"
+    name: update_program_index
+    signature: def update_program_index(entry, index_path, lock_path)
+  - docstring: 'Enforce exact parameter names/arity for PXOS hooks.
+
+      Returns (ok: bool, err: Optional[str])'
+    name: _check_hook_signature
+    signature: def _check_hook_signature(mod, name, required)
+  - docstring: 'Looks for sidecar manifest `{stem}_manifest.yaml` next to the program.
+
+      Returns (ok: bool, manifest: dict|None, err: str|None)'
+    name: _validate_manifest_for
+    signature: def _validate_manifest_for(py_path)
+  - docstring: 'Measure per-frame update() wall time.
+
+      Returns dict: {avg_ms, min_ms, max_ms, over_threshold, threshold_ms}'
+    name: _time_update_loop
+    signature: def _time_update_loop(mod, ctx, frames, dt, threshold_ms)
+  - docstring: ''
+    name: _import_module_from_path
+    signature: def _import_module_from_path(path)
+  - docstring: ''
+    name: validate_program
+    signature: def validate_program(path, frames, dt, report_path, silent, strict_doc,
+      verbose, perf_threshold_ms)
+  - docstring: ''
+    name: print_validation_report
+    signature: def print_validation_report(result, frames, ok)
+  - docstring: ''
+    name: _maybe_write_report
+    signature: def _maybe_write_report(report_path, result, ok)
+  - docstring: Generate a PXOS program or plugin template and manifest at the given
+      path.
+    name: scaffold_program
+    signature: def scaffold_program(path, force, is_plugin)
+  - docstring: ''
+    name: submit_program
+    signature: def submit_program(program_path, force, frames, perf_threshold_ms,
+      strict_perf, require_manifest)
+  - docstring: ''
+    name: main
+    signature: def main()
+  path: program_host.py
+- classes: []
+  functions:
+  - docstring: Initialize regions and state.
+    name: setup
+    signature: def setup(ctx)
+  - docstring: Update parameters per frame.
+    name: update
+    signature: def update(ctx, dt)
+  - docstring: Handle click events.
+    name: on_event
+    signature: def on_event(ctx, ev)
+  path: programs/test_program.py
+project:
+  author: PXOS Team
+  description: Pixel Operating System for visual programming
+  name: PXOS
+  version: 1.0.0

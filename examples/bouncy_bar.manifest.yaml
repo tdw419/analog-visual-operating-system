@@ -1,0 +1,7 @@
+name: Bouncy Bar
+version: 0.1.0
+description: Bouncy Bar for PXOS
+tags: [demo, tutorial]
+created: 2025-08-13
+perf_avg_max_ms: 1.5
+perf_spike_max_ms: 5.0
