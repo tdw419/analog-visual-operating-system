@@ -30,5 +30,7 @@ class ExecutionSandbox:
             return False, str(e)
 
     def run_pxasm(self, code):
-        # This will be implemented later
-        pass
+        from pxos_py.vm import PXASMVirtualMachine
+        vm = PXASMVirtualMachine(self.px)
+        vm.load_program(code)
+        vm.execute()
