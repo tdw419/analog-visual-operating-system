@@ -18,6 +18,13 @@ class TrustAnchor:
     """
     Manages cryptographic operations, including signing, verification,
     and TPM-based key attestation.
+
+    In a production environment, the keys managed by this class should be
+    handled with extreme care. Private keys should be stored in a secure
+    enclave or HSM. A robust key rotation policy should be in place for
+    all keys (e.g., rotating developer keys every 90 days). The TPM root
+    public key forms the root of trust for developer key attestation and
+    must be distributed securely.
     """
 
     def __init__(
@@ -28,6 +35,11 @@ class TrustAnchor:
     ):
         """
         Initializes the TrustAnchor for signing or verification.
+
+        Note: This class assumes key files are provided on the filesystem.
+        In a production system, this should be integrated with a secure key
+        management service (e.g., HashiCorp Vault, AWS KMS).
+
         Args:
             root_pub_pem_path: Path to the PEM-encoded TPM root public key (ECDSA).
             dev_priv_pem_path: Path to the PEM-encoded developer private key (Ed25519) for signing.
