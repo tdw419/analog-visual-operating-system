@@ -25,9 +25,17 @@ class ExecutionSandbox:
                 exec(code, self.env)
             elif lang == "pxasm":
                 self.run_pxasm(code)
+            elif lang == "wasm":
+                self.run_wasm(code)
             return True, "Execution completed"
         except Exception as e:
             return False, str(e)
+
+    def run_wasm(self, code):
+        from pxos_py.wasm_runtime import WasmRuntime
+        runtime = WasmRuntime(self.px)
+        runtime.load_module(code)
+        runtime.run()
 
     def run_pxasm(self, code):
         from pxos_py.vm import PXASMVirtualMachine

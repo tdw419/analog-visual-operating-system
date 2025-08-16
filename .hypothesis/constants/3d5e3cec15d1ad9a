@@ -1,0 +1,4 @@
+# file: /app/pxos_py/hw/dma.py
+# hypothesis_version: 6.138.2
+
+[0.01, 'buf', 'inflight_operations', 'max_inflight', 'prio', 'queue_size', 'size']

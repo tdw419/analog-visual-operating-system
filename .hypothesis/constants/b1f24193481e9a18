@@ -1,0 +1,4 @@
+# file: /app/pxos_py/bitpack_v2.py
+# hypothesis_version: 6.138.2
+
+[b'\x00', b'PXCODE2\x00', 0.5, 0.999, 'BitPackHeaderV2', 'BitPackSpec', 'Invalid magic number', 'ascii', 'content', 'digest', 'lang', 'little', 'pixelpy', 'text', 'utf-8']

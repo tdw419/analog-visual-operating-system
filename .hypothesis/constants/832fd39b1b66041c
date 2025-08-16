@@ -1,0 +1,4 @@
+# file: /app/pxos_py/visual_editor.py
+# hypothesis_version: 6.138.2
+
+[0.5, 220, '#', ':', 'ADD', 'APPLY_FIELD', 'BLEND', 'BLUR', 'CALL', 'CLEAR', 'CONVOL', 'COPY', 'CREATE_FIELD', 'DEBUG', 'DIV', 'EDGE', 'HALT', 'JMP', 'JNZ', 'JZ', 'LOAD', 'MOUSE_CLICK', 'MOVE', 'MOVE_MASK', 'MUL', 'PEEK', 'POKE', 'RET', 'STORE', 'SUB', 'SYNC', 'Visual Editor', 'block', 'code', 'pxasm', 'python', 'visual']

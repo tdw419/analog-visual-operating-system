@@ -1,0 +1,4 @@
+# file: /app/pxos_core/screen_native_sim.py
+# hypothesis_version: 6.138.2
+
+[0.1, 128, 255, 512, 600, 1000, 1024, '--color-space', '--fps', '--headless', '--profile', '--program', '--steps', '.png', '.py', 'COPY', 'DRAW', 'Frames per second', 'MOVE', 'Run without display', '__main__', 'avg_frame_time_ms', 'color_space', 'content', 'debug', 'execution_counts', 'fb', 'fb_class', 'fps', 'headless', 'hsl', 'kernels', 'lang', 'logs/profiler.jsonl', 'move', 'n_frames', 'opcode_error', 'opcode_execute', 'pid', 'pixelpy', 'profiler', 'pxasm', 'pxprog', 'python', 'rgb', 'rre', 'setup', 'sim_complete', 'sim_error', 'sim_setup', 'sim_start', 'steps', 'store_true', 'surface', 'ticks', 'update', 'utf-8', 'w']
