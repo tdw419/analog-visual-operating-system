@@ -41,6 +41,14 @@ def main():
 
     args = parser.parse_args()
 
+    # --- Pre-Build Security Checks (Future Enhancement) ---
+    # In a production CI/CD pipeline, additional security checks would be run here.
+    # print("Running static analysis...")
+    # subprocess.run(["sonarqube-scanner", "..."], check=True)
+    # print("Running dependency vulnerability scan...")
+    # subprocess.run(["pip-audit"], check=True)
+    # ----------------------------------------------------
+
     # 1. Read and optionally compress source code
     print(f"Reading source from {args.source_file}...")
     with open(args.source_file, "r", encoding="utf-8") as f:

@@ -3,10 +3,16 @@ import hashlib
 import os
 import sys
 import subprocess
+import importlib.metadata
 from datetime import datetime
-from typing import List, Dict, Any
-
 from typing import List, Dict, Any, Optional
+
+def _get_installed_dependencies() -> List[Dict[str, str]]:
+    """Gets a list of installed packages and their versions."""
+    return [
+        {"name": dist.metadata["name"], "version": dist.version}
+        for dist in importlib.metadata.distributions()
+    ]
 
 def generate_sbom(
     artifacts: List[Dict[str, Any]],
@@ -34,6 +40,10 @@ def generate_sbom(
             "repro_mode": True
         }
 
+    # If dependencies are not provided, discover them from the environment.
+    if dependencies is None:
+        dependencies = _get_installed_dependencies()
+
     image_data = b"".join(a.get("data", b"") for a in artifacts)
 
     sbom = {
@@ -51,7 +61,7 @@ def generate_sbom(
         },
         "provenance": provenance,
         "key_lineage": key_lineage or {},
-        "dependencies": dependencies or [],
+        "dependencies": dependencies,
         "vulnerabilities": [],  # Placeholder for future vulnerability scan results
         "artifacts": [
             {
