@@ -467,8 +467,13 @@ def remediate_code(target_file, original_content, patched_content, sub_task, ver
             "last_modified": datetime.now().isoformat(),
             "tags": validation_result["manifest"].get("tags", sub_task.get("tags", [])),
             "checksum": _sha256(target_file),
-            "manifest_checksum": _sha256(f"{target_file.replace('.py', '')}_manifest.yaml")
-                if os.path.exists(f"{target_file.replace('.py', '')}_manifest.yaml") else None,
+            # Build the manifest path without putting backslashes inside an f-string expression.
+            # Using replace()+concat avoids the "f-string expression part cannot include a backslash" SyntaxError on Windows.
+            "manifest_checksum": (
+                _sha256(target_file.replace(".py", "") + "_manifest.yaml")
+                if os.path.exists(target_file.replace(".py", "") + "_manifest.yaml")
+                else None
+            ),
             "validated_at": datetime.now().isoformat(),
             "perf": validation_result["performance"],
             "perf_ok": validation_result["performance"].get("max_ms", 0) <= validation_result["performance"].get("threshold_ms", 5.0),
