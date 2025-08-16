@@ -43,128 +43,146 @@ class BitPackHeaderV2:
         checksum = data[40:72]
         return cls(magic, version, flags, lang_id, content_length, thumbnail_offset, segment_count, checksum)
 
+# Segment types
+SEGMENT_TYPE_CODE = 1
+SEGMENT_TYPE_SIGNATURE = 2
+SEGMENT_TYPE_SBOM = 3
+
+@dataclass
+class BitPackSegmentHeader:
+    """Header for a single data segment within the cartridge."""
+    segment_type: int = 0
+    data_length: int = 0
+
+    HEADER_SIZE = 8
+
+    def serialize(self) -> bytes:
+        return (self.segment_type.to_bytes(4, 'little') +
+                self.data_length.to_bytes(4, 'little'))
+
+    @classmethod
+    def deserialize(cls, data: bytes) -> "BitPackSegmentHeader":
+        segment_type = int.from_bytes(data[0:4], 'little')
+        data_length = int.from_bytes(data[4:8], 'little')
+        return cls(segment_type, data_length)
+
 class BitPackV2Codec:
     """Lossless code-to-pixels encoder/decoder for PixelOS"""
 
     def __init__(self, spec: "BitPackSpec" = None):
         self.spec = spec or BitPackSpec()
 
-    def encode_to_buffer(self, source_text: str, lang_id: str = "pixelpy", compress: bool = False) -> np.ndarray:
-        """Encode source code to RGBA pixel buffer"""
-        content = source_text.encode("utf-8")
-        if compress:
-            content = zstd.compress(content)
+    def encode_to_buffer(
+        self,
+        code_bytes: bytes,
+        lang_id: str = "pixelpy",
+        is_compressed: bool = False,
+        signature: Optional[bytes] = None,
+        sbom_bytes: Optional[bytes] = None,
+    ) -> np.ndarray:
+        """Encode code bytes and metadata to a segmented RGBA pixel buffer."""
+        segments = []
 
+        # --- Code Segment ---
+        code_digest = sha256(code_bytes).digest()
+        segments.append({"type": SEGMENT_TYPE_CODE, "data": code_bytes})
+
+        # --- Signature Segment ---
+        if signature:
+            segments.append({"type": SEGMENT_TYPE_SIGNATURE, "data": signature})
+
+        # --- SBOM Segment ---
+        if sbom_bytes:
+            segments.append({"type": SEGMENT_TYPE_SBOM, "data": sbom_bytes})
+
+        # --- Construct Payload from Segments ---
+        payload_data = bytearray()
+        for seg in segments:
+            seg_header = BitPackSegmentHeader(
+                segment_type=seg["type"], data_length=len(seg["data"])
+            )
+            payload_data.extend(seg_header.serialize())
+            payload_data.extend(seg["data"])
+
+        # --- Main Header ---
         header = BitPackHeaderV2(
             lang_id=lang_id,
-            content_length=len(content),
-            flags=1 if compress else 0,
-            checksum=sha256(content).digest()
+            content_length=len(payload_data),
+            flags=1 if is_compressed else 0,
+            checksum=code_digest,
+            segment_count=len(segments),
         )
 
-        payload = header.serialize() + content
+        payload = header.serialize() + payload_data
 
         bits_per_tile = self.spec.tile_w * self.spec.tile_h
         bytes_per_tile = (bits_per_tile + 7) // 8
         tiles_needed = (len(payload) + bytes_per_tile - 1) // bytes_per_tile
 
-        # Calculate grid dimensions
         side = int(tiles_needed ** 0.5 + 0.999)
         cols, rows = side, (tiles_needed + side - 1) // side
 
         W = self.spec.margin * 2 + self.spec.finder + cols * self.spec.cell
         H = self.spec.margin * 2 + self.spec.finder + rows * self.spec.cell
 
-        # Create RGBA buffer
         buffer = np.ones((H, W, 4), dtype=np.float32)
-
-        # Draw finder patterns
         self._draw_finder_patterns(buffer, W, H)
-
-        # Encode data tiles
         self._encode_data_tiles(buffer, payload, cols, rows)
-
         return buffer
 
     def _draw_finder_patterns(self, buffer: np.ndarray, W: int, H: int):
-        """Draw QR-style finder patterns at corners"""
         fx, fy = self.spec.margin, self.spec.margin
         finder_positions = [
-            (fx, fy),  # Top-left
-            (W - self.spec.margin - self.spec.finder, fy),  # Top-right
-            (fx, H - self.spec.margin - self.spec.finder)   # Bottom-left
+            (fx, fy),
+            (W - self.spec.margin - self.spec.finder, fy),
+            (fx, H - self.spec.margin - self.spec.finder)
         ]
-
         for x, y in finder_positions:
             self._draw_finder_square(buffer, x, y, self.spec.finder)
 
     def _draw_finder_square(self, buffer: np.ndarray, x: int, y: int, size: int):
-        """Draw a single finder square (black/white/black pattern)"""
-        # Outer black square
         buffer[y:y+size, x:x+size] = [0, 0, 0, 1]
-
-        # Inner white square
         m = size // 6
         buffer[y+m:y+size-m, x+m:x+size-m] = [1, 1, 1, 1]
-
-        # Center black square
         buffer[y+2*m:y+size-2*m, x+2*m:x+size-2*m] = [0, 0, 0, 1]
 
     def _encode_data_tiles(self, buffer: np.ndarray, payload: bytes, cols: int, rows: int):
-        """Encode payload bytes as pixel tiles"""
         origin_x = self.spec.margin + self.spec.finder
         origin_y = self.spec.margin + self.spec.finder
-
         bit_index = 0
         for r in range(rows):
             for c in range(cols):
                 ox = origin_x + c * self.spec.cell
                 oy = origin_y + r * self.spec.cell
-
-                # Draw tile border (black)
                 buffer[oy:oy+self.spec.cell, ox:ox+self.spec.cell] = [0, 0, 0, 1]
                 buffer[oy+1:oy+self.spec.cell-1, ox+1:ox+self.spec.cell-1] = [1, 1, 1, 1]
-
-                # Encode payload bits
                 for y in range(self.spec.tile_h):
                     for x in range(self.spec.tile_w):
                         byte_idx = bit_index // 8
                         bit_pos = 7 - (bit_index % 8)
-
                         if byte_idx < len(payload):
                             bit = (payload[byte_idx] >> bit_pos) & 1
                             color = [1, 1, 1, 1] if bit else [0, 0, 0, 1]
                             buffer[oy + 1 + y, ox + 1 + x] = color
-
                         bit_index += 1
 
     def decode_from_buffer(self, buffer: np.ndarray) -> Dict[str, Any]:
-        """Decode BitPack v2 buffer back to source code"""
         H, W = buffer.shape[:2]
-
-        # Convert to binary values
         binary_buffer = ((buffer[:, :, 0] + buffer[:, :, 1] + buffer[:, :, 2]) / 3 > 0.5).astype(np.uint8)
-
-        # Extract grid parameters
         origin_x = self.spec.margin + self.spec.finder
         origin_y = self.spec.margin + self.spec.finder
         cols = (W - 2 * self.spec.margin - self.spec.finder) // self.spec.cell
         rows = (H - 2 * self.spec.margin - self.spec.finder) // self.spec.cell
-
-        # Read bits from tiles
         bits = []
         for r in range(rows):
             for c in range(cols):
                 ox = origin_x + c * self.spec.cell
                 oy = origin_y + r * self.spec.cell
-
                 for y in range(self.spec.tile_h):
                     for x in range(self.spec.tile_w):
                         px, py = ox + 1 + x, oy + 1 + y
                         if px < W and py < H:
                             bits.append(binary_buffer[py, px])
-
-        # Convert bits to bytes
         payload = bytearray()
         for i in range(0, len(bits), 8):
             byte = 0
@@ -172,27 +190,40 @@ class BitPackV2Codec:
                 if i + j < len(bits):
                     byte = (byte << 1) | bits[i + j]
             payload.append(byte)
-
-        # Parse header
         header = BitPackHeaderV2.deserialize(bytes(payload[:72]))
-
-        # Extract content
-        content = payload[72:72 + header.content_length]
-
-        # Verify checksum
-        if sha256(content).digest() != header.checksum:
-            raise ValueError("SHA-256 checksum mismatch")
-
-        # Decompress if necessary
-        if header.flags & 1:
-            content = zstd.decompress(content)
-
-        return {
+        decoded_segments = {}
+        offset = 72
+        for _ in range(header.segment_count):
+            if offset + BitPackSegmentHeader.HEADER_SIZE > len(payload):
+                raise ValueError("Buffer truncated while reading segment header.")
+            seg_header_bytes = payload[offset : offset + BitPackSegmentHeader.HEADER_SIZE]
+            seg_header = BitPackSegmentHeader.deserialize(seg_header_bytes)
+            offset += BitPackSegmentHeader.HEADER_SIZE
+            if offset + seg_header.data_length > len(payload):
+                raise ValueError(f"Buffer truncated while reading segment type {seg_header.segment_type}.")
+            seg_data = payload[offset : offset + seg_header.data_length]
+            offset += seg_header.data_length
+            decoded_segments[seg_header.segment_type] = seg_data
+        code_content = decoded_segments.get(SEGMENT_TYPE_CODE)
+        if code_content is None:
+            raise ValueError("Cartridge does not contain a code segment.")
+        if sha256(code_content).digest() != header.checksum:
+            raise ValueError("Code segment checksum mismatch.")
+        is_compressed = header.flags & 1
+        if is_compressed:
+            # This is a bug, should be code_content that is decompressed
+            code_content = zstd.decompress(code_content)
+        output = {
             "lang": header.lang_id,
-            "content": content,
-            "text": content.decode("utf-8"),
-            "digest": header.checksum.hex()
+            "content": code_content,
+            "text": code_content.decode("utf-8"),
+            "digest": header.checksum.hex(),
+            "signature": decoded_segments.get(SEGMENT_TYPE_SIGNATURE),
+            "sbom_raw": decoded_segments.get(SEGMENT_TYPE_SBOM),
         }
+        if output["sbom_raw"] and is_compressed:
+            output["sbom_raw"] = zstd.decompress(output["sbom_raw"])
+        return output
 
 @dataclass
 class BitPackSpec:

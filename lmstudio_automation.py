@@ -14,6 +14,7 @@ Automates PXOS development with a self-correcting agent loop:
 - Integration with program_host.py for atomic index updates
 """
 import requests
+from pxos_py.trust.network import NetworkGuard
 import subprocess
 import time
 import json
@@ -256,6 +257,8 @@ def get_project_files():
     return sorted(set(files))
 
 # === LM Studio Helper ===
+network_guard = NetworkGuard("net-policy.yaml")
+
 def query_lmstudio(system_prompt, user_prompt):
     payload = {
         "model": MODEL,
@@ -267,7 +270,7 @@ def query_lmstudio(system_prompt, user_prompt):
         "max_tokens": 4096
     }
     try:
-        resp = requests.post(LMSTUDIO_API_URL, json=payload, timeout=60)
+        resp = network_guard.post(LMSTUDIO_API_URL, json=payload, timeout=60)
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"]
         try:

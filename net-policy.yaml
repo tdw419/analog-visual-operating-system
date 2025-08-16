@@ -1,0 +1,25 @@
+# Network security policy for PXOS
+require_tls: false
+
+allowed_domains:
+  - "localhost"
+
+# TLS pinning is not applicable for http://localhost, but the structure is here for future use.
+tls_pins:
+  api.example.com:
+    leaf_spki_sha256_b64:
+      - "<primary pin>"
+      - "<backup pin>"
+    pin_level: leaf
+
+rate_limits:
+  requests_per_min: 60
+  burst: 10
+
+# If a domain is not explicitly in allowed_domains, block the connection.
+fail_closed: true
+
+# A list of specific IP addresses to block, even if their domain is allowed.
+ip_blocklist:
+  - "127.0.0.1" # Example: block direct localhost access if needed for some policies
+  - "0.0.0.0"
