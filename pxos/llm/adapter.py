@@ -2,6 +2,7 @@
 from ..hostcalls_llm import LlmRequest, LlmChunk
 from .ratelimit import RateLimiter
 from .local_worker import LocalWorker
+from .gateway_worker import GatewayWorker
 from .base_worker import LlmLimits
 from fnmatch import fnmatch
 
@@ -10,16 +11,34 @@ class LlmAdapter:
         self.policy = policy
         self.keystore = keystore
         self.caps = dict(caps)  # immutable copy
-        self.backends = {"local": LocalWorker()}
+        self.backends = {}
+
+        # Instantiate gateway worker if allowed by policy
+        if self.caps.get("net") and policy.get("trust_verdict") == "trusted":
+            gateway_config_name = policy.get("llm_gateway")
+            if gateway_config_name:
+                # In a real app, this would fetch the full config dict
+                # For now, we'll use a placeholder
+                gateway_config = {
+                    "url": "https://example.com/llm",
+                    "headers": {"Authorization": f"Bearer {self.keystore.get('api_key')}"},
+                    "timeout": 30
+                }
+                self.backends["gateway"] = GatewayWorker(gateway_config)
+
+        # Always have a local fallback
+        self.backends["local"] = LocalWorker()
+
         self.rate_limiter = RateLimiter(
             max_prompts_per_min=policy.get("max_prompts_per_min", 60),
             max_tokens_per_min=policy.get("max_tokens_per_min", 5000)
         )
 
     def _choose_backend(self):
-        if not self.caps.get("net", False):
-            return "local"
-        return "local"  # Until gateway is implemented
+        # Prefer gateway if it was successfully initialized
+        if "gateway" in self.backends:
+            return "gateway"
+        return "local"
 
     def _model_allowed(self, model: str) -> bool:
         # normalize to avoid policy bypass via whitespace/case
