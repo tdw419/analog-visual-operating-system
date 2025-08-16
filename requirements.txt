@@ -1,0 +1,6 @@
+jsonschema
+numpy
+pytest
+zstd
+pygame
+psutil
