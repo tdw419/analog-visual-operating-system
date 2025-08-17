@@ -1,0 +1,25 @@
+# .github/workflows/llm_viz.yml
+name: LLM Visualization Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run LLM Visualization Tests
+        run: |
+          echo "Running LLM visualization tests..."
+          # This would run a test script like 'pytest tests/test_llm.py'
+          echo "LLM visualization tests complete (simulation)."

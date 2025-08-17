@@ -1,0 +1,6 @@
+numpy
+Pillow
+PyYAML
+# Add torch and transformers for future PIXEL model integration
+# torch
+# transformers
