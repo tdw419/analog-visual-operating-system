@@ -1,6 +1,10 @@
 numpy
 Pillow
 PyYAML
+pytest
+zstd
+pygame
+psutil
 # Add torch and transformers for future PIXEL model integration
 # torch
 # transformers
