@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Python - No Compilation Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #0f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #1a1a1a;
+            padding: 15px 20px;
+            border-bottom: 2px solid #0f0;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .execution-method {
+            display: flex;
+            gap: 15px;
+            margin-left: auto;
+        }
+
+        .method-indicator {
+            padding: 8px 12px;
+            border: 2px solid;
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .traditional-method {
+            border-color: #f00;
+            color: #f00;
+        }
+
+        .direct-method {
+            border-color: #0f0;
+            color: #0f0;
+            animation: glow 2s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px #0f0; }
+            50% { box-shadow: 0 0 15px #0f0; }
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: calc(100vh - 80px);
+            gap: 2px;
+            background: #333;
+            padding: 2px;
+        }
+
+        .code-area {
+            background: #111;
+            border: 1px solid #0f0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .visual-area {
+            background: #000;
+            border: 1px solid #0f0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .area-header {
+            background: #222;
+            padding: 12px;
+            border-bottom: 1px solid #0f0;
+            font-size: 14px;
+            color: #ff0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-editor {
+            flex: 1;
+            background: #111;
+            color: #0f0;
+            border: none;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .visual-canvas {
+            flex: 1;
+            background: #001100;
+            margin: 10px;
+            border: 1px solid #0f0;
+            image-rendering: pixelated;
+        }
+
+        .status-bar {
+            background: #222;
+            border-top: 1px solid #0f0;
+            padding: 8px 15px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            background: #003300;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+
+        .btn:hover {
+            background: #0f0;
+            color: #000;
+        }
+
+        .execution-indicator {
+            background: #0f0;
+            color: #000;
+            padding: 3px 6px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .performance-stats {
+            color: #0ff;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>🔥 Live Python - No Compilation Required</h2>
+
+        <button class="btn" onclick="toggleLiveMode()">⚡ Toggle Live Mode</button>
+        <button class="btn" onclick="runTraditional()">🐍 Run Traditional</button>
+        <button class="btn" onclick="clearCanvas()">🧹 Clear</button>
+        <button class="btn" onclick="exportToTimeline()">🎬 Export to Timeline</button>
+
+        <div class="execution-method">
+            <div class="traditional-method">
+                Traditional:<br>
+                Code → Compile → Bytecode → Execute
+            </div>
+            <div class="direct-method">
+                Direct Visual:<br>
+                Code → Immediate Visual Output
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="code-area">
+            <div class="area-header">
+                Python Code - Direct Visual Execution
+                <div class="execution-indicator" id="liveIndicator">LIVE MODE ON</div>
+            </div>
+
+            <textarea class="code-editor" id="codeEditor" placeholder="# This Python executes DIRECTLY as visual operations
+# No compilation step - change any value and see instant results!
+
+# Variables become visual elements immediately
+x = 100
+y = 150
+size = 30
+color = 'lime'
+
+# Math operations render as you type
+width = size * 2
+height = size + 10
+
+# Text output appears instantly
+print('Direct Python Execution!')
+print(f'Position: ({x}, {y})')
+
+# Loops create immediate visual sequences
+for i in range(3):
+    offset = i * 40
+    print(f'Creating element {i} at offset {offset}')
+
+# Try changing any number above!
+# Watch the right side update as you type!">x = 100
+y = 150
+size = 30
+color = "lime"
+
+# Math operations render as you type
+width = size * 2
+height = size + 10
+
+# Text output appears instantly
+print("Direct Python Execution!")
+print(f"Position: ({x}, {y})")
+
+# Loops create immediate visual sequences
+for i in range(3):
+    offset = i * 40
+    print(f"Creating element {i} at offset {offset}")
+
+# Try changing any number above!
+# Watch the right side update as you type!</textarea>
+
+            <div class="status-bar">
+                <div>
+                    <span id="liveStatus">Live Mode: ON</span> |
+                    <span id="updateCount">Updates: 0</span>
+                </div>
+                <div class="performance-stats" id="performanceStats">
+                    Last execution: 0ms (no compilation!)
+                </div>
+            </div>
+        </div>
+
+        <div class="visual-area">
+            <div class="area-header">
+                Direct Visual Output - Real-time Rendering
+                <div style="font-size: 11px; color: #0ff;">Zero compilation delay</div>
+            </div>
+
+            <canvas id="visualCanvas" class="visual-canvas" width="600" height="500"></canvas>
+
+            <div class="status-bar">
+                <div id="visualStatus">Ready for direct execution</div>
+                <div id="renderStats">Objects: 0 | Signals: 0</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class DirectPythonExecutor {
+            constructor() {
+                this.canvas = document.getElementById('visualCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.ctx.imageSmoothingEnabled = false;
+
+                this.codeEditor = document.getElementById('codeEditor');
+
+                this.variables = {};
+                this.isLiveMode = true;
+                this.updateCounter = 0;
+                this.lastCode = '';
+                this.renderObjects = 0;
+                this.recentlyUpdated = {};
+
+                this.setupLiveExecution();
+                this.setupBitmapFont();
+                this.executeDirectly();
+            }
+
+            setupBitmapFont() {
+                this.font5x7 = {
+                    'A': [0x0E,0x11,0x1F,0x11,0x11], 'B': [0x1E,0x11,0x1E,0x11,0x1E],
+                    'C': [0x0E,0x11,0x10,0x11,0x0E], 'D': [0x1E,0x11,0x11,0x11,0x1E],
+                    'E': [0x1F,0x10,0x1E,0x10,0x1F], 'F': [0x1F,0x10,0x1E,0x10,0x10],
+                    'G': [0x0E,0x11,0x13,0x11,0x0E], 'H': [0x11,0x11,0x1F,0x11,0x11],
+                    'I': [0x0E,0x04,0x04,0x04,0x0E], 'L': [0x10,0x10,0x10,0x10,0x1F],
+                    'M': [0x11,0x1B,0x15,0x11,0x11], 'N': [0x11,0x19,0x15,0x13,0x11],
+                    'O': [0x0E,0x11,0x11,0x11,0x0E], 'P': [0x1E,0x11,0x1E,0x10,0x10],
+                    'R': [0x1E,0x11,0x1E,0x14,0x13], 'S': [0x0F,0x10,0x0E,0x01,0x1E],
+                    'T': [0x1F,0x04,0x04,0x04,0x04], 'U': [0x11,0x11,0x11,0x11,0x0E],
+                    'V': [0x11,0x11,0x11,0x0A,0x04], 'W': [0x11,0x11,0x15,0x1B,0x11],
+                    'X': [0x11,0x0A,0x04,0x0A,0x11], 'Y': [0x11,0x0A,0x04,0x04,0x04],
+                    'Z': [0x1F,0x02,0x04,0x08,0x1F],
+                    '0': [0x0E,0x11,0x11,0x11,0x0E], '1': [0x04,0x0C,0x04,0x04,0x0E],
+                    '2': [0x0E,0x11,0x02,0x08,0x1F], '3': [0x1F,0x02,0x06,0x01,0x1E],
+                    '4': [0x02,0x06,0x0A,0x1F,0x02], '5': [0x1F,0x10,0x1E,0x01,0x1E],
+                    '6': [0x06,0x08,0x1E,0x11,0x0E], '7': [0x1F,0x01,0x02,0x04,0x08],
+                    '8': [0x0E,0x11,0x0E,0x11,0x0E], '9': [0x0E,0x11,0x0F,0x02,0x0C],
+                    ' ': [0x00,0x00,0x00,0x00,0x00], ':': [0x00,0x04,0x00,0x04,0x00],
+                    '(': [0x02,0x04,0x04,0x04,0x02], ')': [0x08,0x04,0x04,0x04,0x08],
+                    '!': [0x04,0x04,0x04,0x00,0x04], ',': [0x00,0x00,0x00,0x04,0x08],
+                    '.': [0x00,0x00,0x00,0x00,0x04], '_': [0x00,0x00,0x00,0x00,0x1F]
+                };
+            }
+
+            setupLiveExecution() {
+                // Execute directly as user types - NO compilation step!
+                this.codeEditor.addEventListener('input', () => {
+                    if (this.isLiveMode) {
+                        this.executeDirectly();
+                    }
+                });
+
+                this.codeEditor.addEventListener('keyup', () => {
+                    if (this.isLiveMode) {
+                        this.executeDirectly();
+                    }
+                });
+            }
+
+            executeDirectly() {
+                const startTime = performance.now();
+                const code = this.codeEditor.value;
+
+                if (code === this.lastCode) return;
+                this.lastCode = code;
+
+                // Clear canvas for fresh render
+                this.clearCanvas();
+                this.variables = {};
+                this.renderObjects = 0;
+
+                // DIRECT EXECUTION - No compilation to bytecode!
+                this.parseAndRenderDirectly(code);
+
+                // Update stats
+                const executionTime = performance.now() - startTime;
+                this.updateCounter++;
+
+                document.getElementById('updateCount').textContent = `Updates: ${this.updateCounter}`;
+                document.getElementById('performanceStats').textContent =
+                    `Last execution: ${executionTime.toFixed(2)}ms (no compilation!)`;
+                document.getElementById('renderStats').textContent =
+                    `Objects: ${this.renderObjects} | Signals: ${this.renderObjects * 3}`;
+            }
+
+            parseAndRenderDirectly(code, dryRun = false) {
+                const lines = code.split('\n');
+                const operations = [];
+                let printY = 80;
+                let inBlock = false;
+                let indentLevel = 0;
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    const lineIndent = line.search(/\S|$/);
+
+                    if (inBlock && lineIndent <= indentLevel) {
+                        inBlock = false;
+                        const op = {type: 'block_end', original: 'BLOCK END'};
+                        operations.push(op);
+                        if(!dryRun) this.visualBlockEnd();
+                    }
+
+                    if (!trimmed || trimmed.startsWith('#')) continue;
+
+                    try {
+                        let op = null;
+                        if (trimmed.includes('=') && !trimmed.includes('==')) {
+                            op = {type: 'assign', original: trimmed};
+                            if(!dryRun) this.handleAssignment(trimmed);
+                        } else if (trimmed.startsWith('print(')) {
+                            op = {type: 'print', original: trimmed};
+                            if(!dryRun) {
+                                const content = this.extractPrintContent(trimmed);
+                                this.renderText(content, 20, printY, 'cyan');
+                                printY += 15;
+                                this.renderObjects++;
+                            }
+                        } else if (trimmed.startsWith('for ')) {
+                            op = {type: 'loop_start', original: trimmed};
+                            if(!dryRun) this.handleForLoop(trimmed);
+                            inBlock = true;
+                            indentLevel = lineIndent;
+                        } else if (trimmed.startsWith('if ')) {
+                            op = {type: 'conditional_start', original: trimmed};
+                            if(!dryRun) this.visualConditionalStart(trimmed);
+                            inBlock = true;
+                            indentLevel = lineIndent;
+                        } else if (trimmed.startsWith('else')) {
+                            op = {type: 'conditional_else', original: trimmed};
+                            if(!dryRun) this.visualConditionalElse(trimmed);
+                        }
+                        if(op) operations.push(op);
+                    } catch (e) {
+                        // Continue on parse errors
+                    }
+                }
+                if (inBlock) {
+                    const op = {type: 'block_end', original: 'BLOCK END'};
+                    operations.push(op);
+                    if(!dryRun) this.visualBlockEnd();
+                }
+
+                if (!dryRun) {
+                    this.renderVariables();
+                }
+                return operations;
+            }
+
+            visualLoopStart(operation) {
+                this.ctx.fillStyle = '#ff0';
+                this.ctx.fillRect(10, this.variables.y + 150, 50, 20);
+                this.ctx.fillStyle = '#000';
+                this.renderText('LOOP', 15, this.variables.y + 162, '#000');
+                this.renderObjects++;
+            }
+
+            visualConditionalStart(operation) {
+                this.ctx.fillStyle = '#f0f';
+                this.ctx.fillRect(70, this.variables.y + 150, 60, 20);
+                this.ctx.fillStyle = '#000';
+                this.renderText('IF', 75, this.variables.y + 162, '#000');
+                this.renderObjects++;
+            }
+
+            visualConditionalElse(operation) {
+                this.ctx.fillStyle = '#f88';
+                this.ctx.fillRect(140, this.variables.y + 150, 60, 20);
+                this.ctx.fillStyle = '#000';
+                this.renderText('ELSE', 145, this.variables.y + 162, '#000');
+                this.renderObjects++;
+            }
+
+            visualBlockEnd() {
+                this.ctx.fillStyle = '#888';
+                this.ctx.fillRect(210, this.variables.y + 150, 80, 20);
+                this.ctx.fillStyle = '#000';
+                this.renderText('END BLOCK', 215, this.variables.y + 162, '#000');
+                this.renderObjects++;
+            }
+
+            handleAssignment(line) {
+                const [varName, value] = line.split('=').map(s => s.trim());
+                // Handle list comprehension
+                if (value.startsWith('[') && value.includes('for')) {
+                    const match = value.match(/\[(.*) for (.*) in range\((\d+)\)\]/);
+                    if (match) {
+                        const expr = match[1].trim();
+                        const loopVar = match[2].trim();
+                        const rangeEnd = parseInt(match[3]);
+                        const list = [];
+                        for (let i = 0; i < rangeEnd; i++) {
+                            const tempScope = { ...this.variables, [loopVar]: i };
+                            const evaluatedExpr = expr.replace(new RegExp('\\b' + loopVar + '\\b', 'g'), i);
+                            try {
+                                list.push(eval(evaluatedExpr));
+                            } catch(e) {
+                                list.push(0); // Default value on error
+                            }
+                        }
+                        this.variables[varName] = list;
+                        this.recentlyUpdated[varName] = Date.now();
+                        return;
+                    }
+                }
+                let evalValue = this.evaluateValue(value);
+                this.variables[varName] = evalValue;
+                this.recentlyUpdated[varName] = Date.now();
+            }
+
+            evaluateValue(value) {
+                // Remove quotes for strings
+                if ((value.startsWith('"') && value.endsWith('"')) ||
+                    (value.startsWith("'") && value.endsWith("'"))) {
+                    return value.slice(1, -1);
+                }
+
+                // Parse numbers
+                if (/^\d+$/.test(value)) {
+                    return parseInt(value);
+                }
+
+                // Handle expressions with variables
+                let evalValue = value;
+                Object.keys(this.variables).forEach(varName => {
+                    const regex = new RegExp('\\b' + varName + '\\b', 'g');
+                    evalValue = evalValue.replace(regex, this.variables[varName]);
+                });
+
+                try {
+                    return eval(evalValue);
+                } catch (e) {
+                    return value;
+                }
+            }
+
+            extractPrintContent(line) {
+                const match = line.match(/print\((.*)\)/);
+                if (match) {
+                    let content = match[1];
+
+                    // Replace variables
+                    Object.keys(this.variables).forEach(varName => {
+                        const regex = new RegExp('\\b' + varName + '\\b', 'g');
+                        content = content.replace(regex, this.variables[varName]);
+                    });
+
+                    // Handle f-strings (simplified)
+                    if (content.includes('f"') || content.includes("f'")) {
+                        content = content.replace(/f["'](.*)["']/, '$1');
+                        content = content.replace(/\{([^}]+)\}/g, (match, expr) => {
+                            return this.evaluateValue(expr);
+                        });
+                    }
+
+                    return content.replace(/["']/g, '');
+                }
+                return '';
+            }
+
+            async handleForLoop(forLine) {
+                const match = forLine.match(/for\s+(\w+)\s+in\s+range\((\d+)\)/);
+                if (match) {
+                    const varName = match[1];
+                    const rangeEnd = parseInt(match[2]);
+
+                    for (let i = 0; i < rangeEnd; i++) {
+                        this.variables[varName] = i;
+                        this.recentlyUpdated[varName] = Date.now();
+                        this.renderVariables(); // Re-render to show flashing update
+                        await new Promise(resolve => setTimeout(resolve, 100)); // Short delay for visibility
+                    }
+                }
+            }
+
+            renderVariables() {
+                let y = 50;
+                const now = Date.now();
+                Object.entries(this.variables).forEach(([name, value]) => {
+                    const isRecent = (now - (this.recentlyUpdated[name] || 0)) < 500;
+                    const textColor = isRecent ? '#000' : 'yellow';
+                    const bgColor = isRecent ? 'yellow' : 'transparent';
+
+                    if(isRecent) {
+                        this.ctx.fillStyle = bgColor;
+                        this.ctx.fillRect(348, y - 7, 250, 18);
+                    }
+
+                    let valueStr = Array.isArray(value) ? `[${value.slice(0,5).join(',') + (value.length > 5 ? '...' : '')}]` : value;
+                    this.renderText(`${name} = ${valueStr}`, 350, y, textColor);
+
+                    if (typeof value === 'number') {
+                        const barWidth = Math.min(Math.abs(value), 150);
+                        const color = value >= 0 ? 'lime' : 'red';
+                        this.renderRect(350 + 150, y - 5, barWidth, 8, color);
+                        this.renderObjects++;
+                    } else if (Array.isArray(value)) {
+                        value.forEach((val, i) => {
+                            if (i < 10) { // Limit drawn elements
+                                this.ctx.fillStyle = `rgba(255, 0, 255, ${0.5 + (val / 100)})`;
+                                this.ctx.fillRect(350 + 150 + (i * 12), y - 5, 10, 8);
+                            }
+                        });
+                        this.renderObjects++;
+                    }
+
+                    y += 20;
+                });
+            }
+
+            renderText(text, x, y, color = 'lime') {
+                this.drawBitmapText(text.toString().toUpperCase(), x, y, 1, color);
+                this.renderObjects++;
+            }
+
+            renderRect(x, y, width, height, color = 'lime') {
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(x, y, width, height);
+                this.renderObjects++;
+            }
+
+            drawBitmapText(text, x, y, scale, color) {
+                this.ctx.fillStyle = color;
+                let currentX = Math.floor(x);
+                const currentY = Math.floor(y);
+
+                for (const char of text) {
+                    const glyph = this.font5x7[char] || this.font5x7[' '];
+
+                    for (let col = 0; col < 5; col++) {
+                        const colBits = glyph[col] || 0;
+                        for (let row = 0; row < 7; row++) {
+                            if (colBits & (1 << (6 - row))) {
+                                this.ctx.fillRect(
+                                    currentX + col * scale,
+                                    currentY + row * scale,
+                                    scale,
+                                    scale
+                                );
+                            }
+                        }
+                    }
+                    currentX += 6 * scale;
+                }
+            }
+
+            clearCanvas() {
+                this.ctx.fillStyle = '#001100';
+                this.ctx.fillRect(0, 0, 600, 500);
+
+                // Header
+                this.renderText('PYTHON DIRECT EXECUTION - NO COMPILATION', 20, 20, 'lime');
+                this.renderText('CODE RENDERS AS VISUAL OPERATIONS IMMEDIATELY', 20, 35, 'cyan');
+            }
+
+            toggleLiveMode() {
+                this.isLiveMode = !this.isLiveMode;
+                const indicator = document.getElementById('liveIndicator');
+                const status = document.getElementById('liveStatus');
+
+                if (this.isLiveMode) {
+                    indicator.textContent = 'LIVE MODE ON';
+                    indicator.style.background = '#0f0';
+                    status.textContent = 'Live Mode: ON';
+                    this.executeDirectly();
+                } else {
+                    indicator.textContent = 'LIVE MODE OFF';
+                    indicator.style.background = '#f00';
+                    status.textContent = 'Live Mode: OFF';
+                }
+            }
+
+            runTraditional() {
+                // Simulate traditional Python execution with compilation delay
+                document.getElementById('performanceStats').textContent = 'Compiling...';
+
+                setTimeout(() => {
+                    const startTime = performance.now();
+                    this.executeDirectly();
+                    const totalTime = performance.now() - startTime + 50; // Add compilation overhead
+
+                    document.getElementById('performanceStats').textContent =
+                        `Traditional execution: ${totalTime.toFixed(2)}ms (with compilation)`;
+                }, 50); // Simulate compilation delay
+            }
+
+            exportToTimeline() {
+                const code = this.codeEditor.value;
+                const operations = this.parseAndRenderDirectly(code, true); // Pass true to skip rendering
+
+                const keyframes = operations.map((op, index) => {
+                    let color = [255, 255, 255]; // Default white
+                    switch(op.type) {
+                        case 'assign': color = [0, 255, 0]; break;
+                        case 'print': color = [0, 255, 255]; break;
+                        case 'loop_start': color = [255, 255, 0]; break;
+                        case 'conditional_start': color = [255, 0, 255]; break;
+                    }
+
+                    return {
+                        time: index * 0.5, // Stagger keyframes every 0.5s
+                        properties: {
+                            text: op.original,
+                            position: [20, 30 + (index % 10) * 15],
+                            color: color,
+                            scale: 1.5,
+                            opacity: 1.0,
+                            rotation: 0
+                        }
+                    };
+                });
+
+                const timelineData = {
+                    keyframes: keyframes,
+                    duration: keyframes.length * 0.5 + 2,
+                    version: "0.3"
+                };
+
+                const blob = new Blob([JSON.stringify(timelineData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'generated_timeline.json';
+                a.click();
+            }
+        }
+
+        // Global instance
+        let liveCoding;
+
+        window.onload = () => {
+            liveCoding = new LiveCodingSystem();
+        };
+
+        // UI Functions
+        function toggleLiveMode() {
+            liveCoding.toggleLiveMode();
+        }
+
+        function runTraditional() {
+            liveCoding.runTraditional();
+        }
+
+        function clearCanvas() {
+            liveCoding.clearCanvas();
+        }
+
+        function exportToTimeline() {
+            liveCoding.exportToTimeline();
+        }
+    </script>
+</body>
+</html>
