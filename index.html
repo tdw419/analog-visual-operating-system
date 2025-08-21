@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analog Timeline Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #0f0;
+            overflow: hidden;
+        }
+
+        .editor-container {
+            display: grid;
+            grid-template-areas:
+                "toolbar toolbar toolbar"
+                "timeline timeline preview"
+                "properties properties preview";
+            grid-template-rows: 50px 1fr 200px;
+            grid-template-columns: 1fr 1fr 400px;
+            height: 100vh;
+            gap: 2px;
+            background: #333;
+            padding: 2px;
+        }
+
+        .toolbar {
+            grid-area: toolbar;
+            background: #2a2a2a;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+            border: 1px solid #0f0;
+        }
+
+        .timeline-area {
+            grid-area: timeline;
+            background: #222;
+            border: 1px solid #0f0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .timeline-ruler {
+            height: 30px;
+            background: #333;
+            border-bottom: 1px solid #0f0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timeline-tracks {
+            flex: 1;
+            overflow: auto;
+        }
+
+        .track {
+            height: 60px;
+            border-bottom: 1px solid #333;
+            position: relative;
+            background: #1a1a1a;
+        }
+
+        .track-header {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 150px;
+            height: 100%;
+            background: #2a2a2a;
+            border-right: 1px solid #0f0;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            z-index: 10;
+        }
+
+        .track-content {
+            position: absolute;
+            left: 150px;
+            top: 0;
+            right: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .keyframe {
+            position: absolute;
+            width: 12px;
+            height: 40px;
+            background: #0f0;
+            border-radius: 2px;
+            top: 10px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+
+        .keyframe:hover {
+            background: #0ff;
+            transform: scale(1.1);
+        }
+
+        .keyframe.selected {
+            background: #ff0;
+            box-shadow: 0 0 10px #ff0;
+        }
+
+        .playhead {
+            position: absolute;
+            width: 2px;
+            height: 100%;
+            background: #f00;
+            top: 0;
+            left: 150px;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        .time-marker {
+            position: absolute;
+            top: 0;
+            height: 30px;
+            border-left: 1px solid #555;
+            color: #888;
+            font-size: 10px;
+            padding-left: 2px;
+        }
+
+        .properties-area {
+            grid-area: properties;
+            background: #222;
+            border: 1px solid #0f0;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .preview-area {
+            grid-area: preview;
+            background: #000;
+            border: 1px solid #0f0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-canvas {
+            border: 1px solid #0f0;
+            image-rendering: pixelated;
+            background: #001100;
+            margin: 10px;
+        }
+
+        .control-panel {
+            padding: 10px;
+            background: #222;
+            border-top: 1px solid #0f0;
+        }
+
+        .btn {
+            background: #003300;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: inherit;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            background: #0f0;
+            color: #000;
+        }
+
+        .property-group {
+            margin-bottom: 20px;
+            border: 1px solid #333;
+            padding: 10px;
+        }
+
+        .property-group h3 {
+            color: #ff0;
+            margin-bottom: 10px;
+        }
+
+        .property-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .property-label {
+            width: 80px;
+            color: #0f0;
+        }
+
+        .property-input {
+            background: #333;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 4px 8px;
+            width: 100px;
+            margin-right: 10px;
+        }
+
+        .color-input {
+            width: 40px;
+            height: 30px;
+            border: 1px solid #0f0;
+            background: transparent;
+        }
+
+        .timeline-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .time-display {
+            color: #0ff;
+            font-weight: bold;
+        }
+
+        .export-area {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #333;
+        }
+
+        .signal-count {
+            color: #0ff;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .preview-info {
+            padding: 10px;
+            font-size: 12px;
+            color: #888;
+            border-bottom: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="editor-container">
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <h2>🎬 Analog Timeline Editor</h2>
+            <button class="btn" onclick="addKeyframe()">+ Add Keyframe</button>
+            <button class="btn" onclick="deleteKeyframe()">Delete</button>
+            <button class="btn" onclick="duplicateKeyframe()">Duplicate</button>
+            <div class="timeline-controls">
+                <button class="btn" onclick="play()">▶️ Play</button>
+                <button class="btn" onclick="stop()">⏹️ Stop</button>
+                <div class="time-display" id="timeDisplay">00:00</div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline-area">
+            <div class="timeline-ruler" id="timelineRuler">
+                <div class="playhead" id="playhead"></div>
+            </div>
+            <div class="timeline-tracks">
+                <div class="track">
+                    <div class="track-header">Text Track</div>
+                    <div class="track-content" id="textTrack"></div>
+                </div>
+                <div class="track">
+                    <div class="track-header">Position Track</div>
+                    <div class="track-content" id="positionTrack"></div>
+                </div>
+                <div class="track">
+                    <div class="track-header">Color Track</div>
+                    <div class="track-content" id="colorTrack"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Properties Panel -->
+        <div class="properties-area">
+            <h3>Keyframe Properties</h3>
+
+            <div class="property-group">
+                <h3>Content</h3>
+                <div class="property-row">
+                    <label class="property-label">Text:</label>
+                    <input type="text" class="property-input" id="textInput" value="HELLO" onchange="updateProperty('text', this.value)">
+                </div>
+                <div class="property-row">
+                    <label class="property-label">Time:</label>
+                    <input type="number" class="property-input" id="timeInput" value="0" step="0.1" onchange="updateKeyframeTime(parseFloat(this.value))">
+                    <span>seconds</span>
+                </div>
+            </div>
+
+            <div class="property-group">
+                <h3>Position</h3>
+                <div class="property-row">
+                    <label class="property-label">X:</label>
+                    <input type="number" class="property-input" id="posXInput" value="20" onchange="updatePosition()">
+                </div>
+                <div class="property-row">
+                    <label class="property-label">Y:</label>
+                    <input type="number" class="property-input" id="posYInput" value="30" onchange="updatePosition()">
+                </div>
+            </div>
+
+            <div class="property-group">
+                <h3>Appearance</h3>
+                <div class="property-row">
+                    <label class="property-label">Scale:</label>
+                    <input type="number" class="property-input" id="scaleInput" value="2" step="0.1" onchange="updateProperty('scale', parseFloat(this.value))">
+                </div>
+                <div class="property-row">
+                    <label class="property-label">Rotation:</label>
+                    <input type="number" class="property-input" id="rotationInput" value="0" onchange="updateProperty('rotation', parseFloat(this.value))">
+                    <span>degrees</span>
+                </div>
+                <div class="property-row">
+                    <label class="property-label">Opacity:</label>
+                    <input type="number" class="property-input" id="opacityInput" value="1" step="0.1" min="0" max="1" onchange="updateProperty('opacity', parseFloat(this.value))">
+                </div>
+            </div>
+
+            <div class="property-group">
+                <h3>Color</h3>
+                <div class="property-row">
+                    <label class="property-label">R:</label>
+                    <input type="number" class="property-input" id="colorRInput" value="0" min="0" max="255" onchange="updateColor()">
+                </div>
+                <div class="property-row">
+                    <label class="property-label">G:</label>
+                    <input type="number" class="property-input" id="colorGInput" value="255" min="0" max="255" onchange="updateColor()">
+                </div>
+                <div class="property-row">
+                    <label class="property-label">B:</label>
+                    <input type="number" class="property-input" id="colorBInput" value="0" min="0" max="255" onchange="updateColor()">
+                </div>
+                <div class="property-row">
+                    <input type="color" class="color-input" id="colorPicker" onchange="updateColorFromPicker()">
+                </div>
+            </div>
+
+            <div class="export-area">
+                <button class="btn" onclick="exportTimeline()">📤 Export JSON</button>
+                <button class="btn" onclick="exportAnalogSignals()">⚡ Export Signals</button>
+                <button class="btn" onclick="saveProject()">💾 Save</button>
+                <button class="btn" onclick="loadProject()">📥 Load</button>
+                <input type="file" id="importFile" style="display:none" accept="application/json" />
+                <button class="btn" onclick="document.getElementById('importFile').click()">📥 Import JSON</button>
+                <div class="signal-count" id="signalCount">Signals: 0</div>
+                <span id="saveStatus" style="margin-left:auto;color:#888;font-size:12px;"></span>
+            </div>
+        </div>
+
+        <!-- Preview Area -->
+        <div class="preview-area">
+            <div class="preview-info">
+                Real-time Analog Preview (160×90)
+            </div>
+            <canvas id="previewCanvas" class="preview-canvas" width="160" height="90"></canvas>
+            <canvas id="journalLane" class="preview-canvas" width="160" height="10"></canvas>
+            <div class="control-panel">
+                <div class="property-row">
+                    <label class="property-label">Easing:</label>
+                    <select class="property-input" id="easingSelect" onchange="updateEasing()">
+                        <option value="linear">Linear</option>
+                        <option value="ease_in_out" selected>Ease In-Out</option>
+                        <option value="bounce">Bounce</option>
+                        <option value="elastic">Elastic</option>
+                    </select>
+                </div>
+                <div class="property-row">
+                    <label class="property-label">Duration:</label>
+                    <input type="number" class="property-input" id="durationInput" value="1.0" step="0.1" min="0.1" onchange="updateDuration()">
+                    <span>seconds</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Timeline Editor Core
+        const SNAP = 0.1;
+        const RULER_START_PX = 150;
+        function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+        class AnalogTimelineEditor {
+            constructor() {
+                this.keyframes = new Map();
+                this.currentTime = 0;
+                this.totalDuration = 10;
+                this.selectedKeyframe = null;
+                this.playing = false;
+                this.pixelsPerSecond = 50;
+                this.canvas = document.getElementById('previewCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.ctx.imageSmoothingEnabled = false;
+                this.timelineOffset = 0;       // seconds (pan)
+                this.minPPS = 20; this.maxPPS = 300;
+                this.draggingPlayhead = false;
+                this.draggingKF = null;                      // {startTime, el}
+                this.lane = document.getElementById('journalLane').getContext('2d');
+                this.laneFlash = 0;
+
+                const tracksEl = document.querySelector('.timeline-tracks');
+                tracksEl.addEventListener('wheel', (e)=>{
+                  if(e.shiftKey){
+                    // pan
+                    const dt = (e.deltaY>0 ? 0.25 : -0.25) * (this.pixelsPerSecond/50);
+                    this.timelineOffset = clamp(this.timelineOffset + dt, -this.totalDuration, this.totalDuration);
+                    this.renderTimelineRuler(); this.renderKeyframes(); this.updatePlayhead();
+                  }else{
+                    // zoom around mouse x
+                    const rect = tracksEl.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const beforeTime = this.pxToTime(mouseX);
+                    const factor = (e.deltaY>0) ? 0.9 : 1.1;
+                    this.pixelsPerSecond = clamp(this.pixelsPerSecond * factor, this.minPPS, this.maxPPS);
+                    const afterTime = this.pxToTime(mouseX);
+                    this.timelineOffset += (beforeTime - afterTime);
+                    this.renderTimelineRuler(); this.renderKeyframes(); this.updatePlayhead();
+                  }
+                  e.preventDefault();
+                });
+
+                const ruler = document.getElementById('timelineRuler');
+                ruler.addEventListener('mousedown', (e)=>{
+                  this.draggingPlayhead = true;
+                  this.currentTime = this.pxToTime(e.clientX);
+                  this.updatePlayhead(); this.updatePreview();
+                });
+                document.addEventListener('mousemove', (e)=>{
+                  if(!this.draggingPlayhead) return;
+                  this.currentTime = this.pxToTime(e.clientX);
+                  this.updatePlayhead(); this.updatePreview();
+                });
+                document.addEventListener('mouseup', ()=>{ this.draggingPlayhead = false; });
+
+                // Initialize with default keyframes
+                this.initializeDefaultKeyframes();
+                this.setupTimeline();
+                this.updatePreview();
+            }
+
+            initializeDefaultKeyframes() {
+                this.keyframes.set(0, {
+                    text: "HELLO",
+                    position: [20, 30],
+                    color: [0, 255, 0],
+                    scale: 2,
+                    opacity: 1.0,
+                    rotation: 0
+                });
+
+                this.keyframes.set(2, {
+                    text: "HELLO",
+                    position: [80, 30],
+                    color: [0, 100, 255],
+                    scale: 2.5,
+                    opacity: 1.0,
+                    rotation: 15
+                });
+
+                this.keyframes.set(4, {
+                    text: "WORLD",
+                    position: [80, 55],
+                    color: [255, 165, 0],
+                    scale: 2.0,
+                    opacity: 0.8,
+                    rotation: -10
+                });
+
+                this.selectedKeyframe = 0;
+            }
+
+            setupTimeline() {
+                this.renderTimelineRuler();
+                this.renderKeyframes();
+                this.updatePropertyPanel();
+            }
+
+            pxToTime(px){ return clamp(((px - RULER_START_PX) / this.pixelsPerSecond) + this.timelineOffset, 0, this.totalDuration); }
+            timeToPx(t){ return RULER_START_PX + (t - this.timelineOffset)*this.pixelsPerSecond; }
+            fmtTime(t){ const mm=Math.floor(t/60).toString().padStart(2,'0'); const ss=(t%60).toFixed(1).padStart(4,'0'); return `${mm}:${ss}`; }
+
+            renderTimelineRuler(){
+              const ruler = document.getElementById('timelineRuler');
+              ruler.innerHTML = '<div class="playhead" id="playhead"></div>';
+              for(let i=0;i<=this.totalDuration;i++){
+                const m = document.createElement('div'); m.className='time-marker';
+                m.style.left = `${this.timeToPx(i)}px`; m.textContent = i+'s'; ruler.appendChild(m);
+              }
+              // drag playhead on ruler
+              ruler.onmousedown = (e)=>{
+                const move = (ev)=>{ this.currentTime = this.pxToTime(ev.clientX); this.updatePlayhead(); this.updatePreview(); };
+                const up = ()=>{ document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+                document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+                move(e);
+              };
+            }
+
+            renderKeyframes() {
+                // Clear existing keyframes
+                document.getElementById('textTrack').innerHTML = '';
+                document.getElementById('positionTrack').innerHTML = '';
+                document.getElementById('colorTrack').innerHTML = '';
+
+                this.keyframes.forEach((keyframe, time) => {
+                    this.addKeyframeToTrack('textTrack', time, keyframe);
+                    this.addKeyframeToTrack('positionTrack', time, keyframe);
+                    this.addKeyframeToTrack('colorTrack', time, keyframe);
+                });
+            }
+
+            addKeyframeToTrack(trackId, time, keyframe){
+              const track = document.getElementById(trackId);
+              const el = document.createElement('div');
+              el.className = 'keyframe';
+              el.style.left = `${this.timeToPx(time) - RULER_START_PX}px`; // track-content starts after header
+              el.dataset.time = time;
+
+              if(time === this.selectedKeyframe) el.classList.add('selected');
+
+              // click to select
+              el.onclick = (ev)=>{ ev.stopPropagation(); this.selectKeyframe(time); };
+
+              // drag to move
+              el.onmousedown = (downEv)=>{
+                downEv.preventDefault();
+                const startX = downEv.clientX;
+                const startTime = time;
+                const move = (mv)=>{
+                  const dx = mv.clientX - startX;
+                  const dt = dx / this.pixelsPerSecond;
+                  let newTime = Math.round((startTime + dt) / SNAP) * SNAP;
+                  newTime = clamp(newTime, 0, this.totalDuration);
+                  if(newTime !== time){
+                    // rekey in the Map (avoid collision)
+                    const kf = this.keyframes.get(time);
+                    if(this.keyframes.has(newTime) && newTime !== time){
+                      newTime = Math.round((newTime + SNAP) / SNAP) * SNAP; // nudge
+                    }
+                    this.keyframes.delete(time);
+                    this.keyframes.set(newTime, kf);
+                    time = newTime;
+                    this.selectedKeyframe = newTime;
+                    this.renderKeyframes();
+                    this.updatePropertyPanel();
+                    this.currentTime = newTime;
+                    this.updatePlayhead();
+                    this.updatePreview();
+                  }
+                };
+                const up = ()=>{ document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', up);
+              };
+
+              track.appendChild(el);
+            }
+
+            selectKeyframe(time) {
+                this.selectedKeyframe = time;
+                this.currentTime = time;
+                this.renderKeyframes();
+                this.updatePropertyPanel();
+                this.updatePlayhead();
+                this.updatePreview();
+            }
+
+            updatePropertyPanel() {
+                if (this.selectedKeyframe === null || !this.keyframes.has(this.selectedKeyframe)) return;
+
+                const kf = this.keyframes.get(this.selectedKeyframe);
+
+                document.getElementById('textInput').value = kf.text;
+                document.getElementById('timeInput').value = this.selectedKeyframe;
+                document.getElementById('posXInput').value = kf.position[0];
+                document.getElementById('posYInput').value = kf.position[1];
+                document.getElementById('scaleInput').value = kf.scale;
+                document.getElementById('rotationInput').value = kf.rotation;
+                document.getElementById('opacityInput').value = kf.opacity;
+                document.getElementById('colorRInput').value = kf.color[0];
+                document.getElementById('colorGInput').value = kf.color[1];
+                document.getElementById('colorBInput').value = kf.color[2];
+
+                // Update color picker
+                const hex = '#' + kf.color.map(c => c.toString(16).padStart(2, '0')).join('');
+                document.getElementById('colorPicker').value = hex;
+            }
+
+            updatePlayhead(){
+              document.getElementById('playhead').style.left = `${this.timeToPx(this.currentTime)}px`;
+              document.getElementById('timeDisplay').textContent = this.fmtTime(this.currentTime);
+            }
+
+            getCurrentState() {
+                const times = Array.from(this.keyframes.keys()).sort((a, b) => a - b);
+
+                // Find surrounding keyframes
+                let fromTime = 0;
+                let toTime = times[times.length - 1];
+
+                for (let i = 0; i < times.length - 1; i++) {
+                    if (this.currentTime >= times[i] && this.currentTime <= times[i + 1]) {
+                        fromTime = times[i];
+                        toTime = times[i + 1];
+                        break;
+                    }
+                }
+
+                if (this.currentTime <= fromTime) {
+                    return this.keyframes.get(fromTime);
+                }
+
+                if (this.currentTime >= toTime) {
+                    return this.keyframes.get(toTime);
+                }
+
+                // Interpolate
+                const progress = (this.currentTime - fromTime) / (toTime - fromTime);
+                const easedProgress = this.applyEasing(progress);
+
+                return this.interpolateKeyframes(
+                    this.keyframes.get(fromTime),
+                    this.keyframes.get(toTime),
+                    easedProgress
+                );
+            }
+
+            applyEasing(t) {
+                const easing = document.getElementById('easingSelect').value;
+
+                switch (easing) {
+                    case 'linear':
+                        return t;
+                    case 'ease_in_out':
+                        return t * t * (3 - 2 * t);
+                    case 'bounce':
+                        if (t < 1/2.75) {
+                            return 7.5625 * t * t;
+                        } else if (t < 2/2.75) {
+                            t -= 1.5/2.75;
+                            return 7.5625 * t * t + 0.75;
+                        } else if (t < 2.5/2.75) {
+                            t -= 2.25/2.75;
+                            return 7.5625 * t * t + 0.9375;
+                        } else {
+                            t -= 2.625/2.75;
+                            return 7.5625 * t * t + 0.984375;
+                        }
+                    case 'elastic':
+                        if (t === 0 || t === 1) return t;
+                        return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI) / 3) + 1;
+                    default:
+                        return t;
+                }
+            }
+
+            interpolateKeyframes(from, to, progress) {
+                return {
+                    text: progress < 0.5 ? from.text : to.text,
+                    position: [
+                        from.position[0] + (to.position[0] - from.position[0]) * progress,
+                        from.position[1] + (to.position[1] - from.position[1]) * progress
+                    ],
+                    color: [
+                        Math.round(from.color[0] + (to.color[0] - from.color[0]) * progress),
+                        Math.round(from.color[1] + (to.color[1] - from.color[1]) * progress),
+                        Math.round(from.color[2] + (to.color[2] - from.color[2]) * progress)
+                    ],
+                    scale: from.scale + (to.scale - from.scale) * progress,
+                    opacity: from.opacity + (to.opacity - from.opacity) * progress,
+                    rotation: from.rotation + (to.rotation - from.rotation) * progress
+                };
+            }
+
+            updatePreview() {
+                const state = this.getCurrentState();
+
+                // Clear canvas
+                this.ctx.fillStyle = '#001100';
+                this.ctx.fillRect(0, 0, 160, 90);
+
+                // Generate and count signals
+                const signals = this.generateAnalogSignals(state);
+                document.getElementById('signalCount').textContent = `Signals: ${signals.length}`;
+
+                // Draw text
+                this.drawText(state);
+                this.drawJournalLane();
+            }
+
+            bitmap5x7 = {
+              ' ': [0,0,0,0,0],
+              'H':[0x11,0x11,0x1F,0x11,0x11],
+              'E':[0x1F,0x10,0x1E,0x10,0x1F],
+              'L':[0x10,0x10,0x10,0x10,0x1F],
+              'O':[0x0E,0x11,0x11,0x11,0x0E],
+              'W':[0x11,0x15,0x15,0x1F,0x11],
+              'R':[0x1E,0x11,0x1E,0x14,0x13],
+              'D':[0x1E,0x11,0x11,0x11,0x1E]
+            };
+            drawBitmapText(txt, x, y, scale, color){
+              const [r,g,b] = color;
+              this.ctx.fillStyle = `rgb(${r},${g},${b})`;
+              let cx = Math.round(x), cy = Math.round(y);
+              for(const ch of txt){
+                const glyph = this.bitmap5x7[ch] || this.bitmap5x7[' '];
+                for(let col=0; col<5; col++){
+                  const colBits = glyph[col] || 0;
+                  for(let row=0; row<7; row++){
+                    if(colBits & (1<<(6-row))){
+                      this.ctx.fillRect(cx + col*scale, cy + row*scale, scale, scale);
+                    }
+                  }
+                }
+                cx += (6*scale); // 5px glyph + 1px space
+              }
+            }
+
+            drawText(state) {
+                const { text, position, color, scale, opacity, rotation } = state;
+                const [r, g, b] = color.map(c => Math.round(c * opacity));
+
+                this.ctx.save();
+                this.ctx.translate(Math.round(position[0]), Math.round(position[1]));
+                this.ctx.rotate(rotation * Math.PI / 180);
+                this.drawBitmapText(text, 0, 0, Math.max(1, Math.round(scale)), [r,g,b]);
+                this.ctx.restore();
+            }
+
+            generateAnalogSignals(state) {
+                // Simplified signal generation
+                const signals = [];
+                const { text, position, color, scale } = state;
+
+                // Estimate signals based on text length and scale
+                const estimatedPixels = text.length * 35 * scale * scale;
+
+                for (let i = 0; i < estimatedPixels; i++) {
+                    signals.push({
+                        timestamp: i,
+                        x: position[0] + (i % (text.length * 6 * scale)),
+                        y: position[1] + Math.floor(i / (text.length * 6 * scale)),
+                        r: color[0],
+                        g: color[1],
+                        b: color[2]
+                    });
+                }
+
+                return signals;
+            }
+
+            play() {
+                this.playing = true;
+                this.animationLoop();
+            }
+
+            stop() {
+                this.playing = false;
+            }
+
+            animationLoop() {
+                if (!this.playing) return;
+
+                this.currentTime += 1/60; // 60 FPS
+                if (this.currentTime > this.totalDuration) {
+                    this.currentTime = 0;
+                }
+
+                this.updatePlayhead();
+                this.updatePreview();
+
+                requestAnimationFrame(() => this.animationLoop());
+            }
+
+            exportTimeline() {
+                const data = {
+                    keyframes: Array.from(this.keyframes.entries()).map(([time, kf]) => ({
+                        time,
+                        properties: kf
+                    })),
+                    duration: this.totalDuration,
+                    easing: document.getElementById('easingSelect').value
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'timeline.json';
+                a.click();
+            }
+
+            exportAnalogSignals() {
+                const signals = [];
+                const fps = 60;
+                const frames = this.totalDuration * fps;
+
+                for (let frame = 0; frame < frames; frame++) {
+                    this.currentTime = frame / fps;
+                    const state = this.getCurrentState();
+                    const frameSignals = this.generateAnalogSignals(state);
+                    signals.push(...frameSignals);
+                }
+
+                const csv = 'timestamp,x,y,r,g,b\n' +
+                           signals.map(s => `${s.timestamp},${s.x},${s.y},${s.r},${s.g},${s.b}`).join('\n');
+
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'analog_signals.csv';
+                a.click();
+            }
+
+            flashJournal(){ this.laneFlash = 6; } // frames
+            drawJournalLane(){
+              const w=160,h=10;
+              this.lane.fillStyle = '#001100'; this.lane.fillRect(0,0,w,h);
+              // scrolling ticks
+              const t = performance.now()/120;
+              for(let x=0;x<w;x+=8){ this.lane.fillStyle = '#033'; this.lane.fillRect((x + (t%8)),0,1,h); }
+              // commit strobe
+              if(this.laneFlash>0){
+                this.lane.fillStyle = '#0f0';
+                this.lane.fillRect(0,0,w,h);
+                this.laneFlash--;
+              }
+            }
+
+            exportCurrentFrameSignalsCSV(){
+              // draw is already up to date for currentTime
+              const w = this.canvas.width, h = this.canvas.height;
+              const bg = [0x00,0x11,0x00];    // your background
+              const id = this.ctx.getImageData(0,0,w,h).data;
+
+              const rows = ["timestamp_ms,x,y,r,g,b"];
+              const ts = Math.round(this.currentTime*1000);
+              for(let y=0;y<h;y++){
+                for(let x=0;x<w;x++){
+                  const i = (y*w + x)*4;
+                  const r=id[i], g=id[i+1], b=id[i+2], a=id[i+3];
+                  if(a===0) continue;
+                  // skip background-ish pixels
+                  if(Math.abs(r-bg[0])<2 && Math.abs(g-bg[1])<2 && Math.abs(b-bg[2])<2) continue;
+                  rows.push(`${ts},${x},${y},${r},${g},${b}`);
+                }
+              }
+              const blob = new Blob([rows.join("\n")], {type:"text/csv"});
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = `signals_frame_${ts}.csv`; a.click();
+            }
+        }
+
+        // Global editor instance
+        let editor;
+
+        // Initialize editor when page loads
+        window.onload = () => {
+            editor = new AnalogTimelineEditor();
+        };
+
+        // UI Event Handlers
+        function addKeyframe() {
+            const newTime = editor.currentTime;
+            if (!editor.keyframes.has(newTime)) {
+                const lastKeyframe = editor.keyframes.get(editor.selectedKeyframe) || {
+                    text: "NEW",
+                    position: [80, 45],
+                    color: [255, 255, 255],
+                    scale: 2,
+                    opacity: 1.0,
+                    rotation: 0
+                };
+
+                editor.keyframes.set(newTime, { ...lastKeyframe });
+                editor.selectedKeyframe = newTime;
+                editor.setupTimeline();
+                editor.updatePreview();
+            }
+        }
+
+        function deleteKeyframe() {
+            if (editor.selectedKeyframe !== null && editor.keyframes.size > 1) {
+                editor.keyframes.delete(editor.selectedKeyframe);
+                editor.selectedKeyframe = Array.from(editor.keyframes.keys())[0];
+                editor.setupTimeline();
+                editor.updatePreview();
+            }
+        }
+
+        function duplicateKeyframe() {
+            if (editor.selectedKeyframe !== null) {
+                const kf = { ...editor.keyframes.get(editor.selectedKeyframe) };
+                const newTime = editor.selectedKeyframe + 1;
+                editor.keyframes.set(newTime, kf);
+                editor.selectedKeyframe = newTime;
+                editor.setupTimeline();
+                editor.updatePreview();
+            }
+        }
+
+        function updateProperty(property, value){
+          if(editor.selectedKeyframe === null) return;
+          const t = editor.selectedKeyframe;
+          const kf = {...editor.keyframes.get(t)};
+          kf[property] = value;
+          editor.keyframes.set(t, kf);
+          editor.renderKeyframes();
+          editor.updatePropertyPanel();
+          editor.updatePreview();
+        }
+
+        function updatePosition() {
+            const x = parseInt(document.getElementById('posXInput').value);
+            const y = parseInt(document.getElementById('posYInput').value);
+            updateProperty('position', [x, y]);
+        }
+
+        function updateColor() {
+            const r = parseInt(document.getElementById('colorRInput').value);
+            const g = parseInt(document.getElementById('colorGInput').value);
+            const b = parseInt(document.getElementById('colorBInput').value);
+            updateProperty('color', [r, g, b]);
+
+            // Update color picker
+            const hex = '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+            document.getElementById('colorPicker').value = hex;
+        }
+
+        function updateColorFromPicker() {
+            const hex = document.getElementById('colorPicker').value;
+            const r = parseInt(hex.substr(1, 2), 16);
+            const g = parseInt(hex.substr(3, 2), 16);
+            const b = parseInt(hex.substr(5, 2), 16);
+
+            document.getElementById('colorRInput').value = r;
+            document.getElementById('colorGInput').value = g;
+            document.getElementById('colorBInput').value = b;
+
+            updateProperty('color', [r, g, b]);
+        }
+
+        function updateKeyframeTime(newTime) {
+            if (editor.selectedKeyframe !== null && newTime !== editor.selectedKeyframe) {
+                const kf = editor.keyframes.get(editor.selectedKeyframe);
+                editor.keyframes.delete(editor.selectedKeyframe);
+                editor.keyframes.set(newTime, kf);
+                editor.selectedKeyframe = newTime;
+                editor.setupTimeline();
+                editor.updatePreview();
+            }
+        }
+
+        function updateEasing() {
+            editor.updatePreview();
+        }
+
+        function updateDuration(){
+          const v = parseFloat(document.getElementById('durationInput').value);
+          if(isNaN(v) || v <= 0) return;
+          editor.totalDuration = v;
+          editor.renderTimelineRuler();
+          editor.updatePlayhead();
+          editor.updatePreview();
+        }
+
+        function play() {
+            editor.play();
+        }
+
+        function stop() {
+            editor.stop();
+        }
+
+        function exportTimeline() {
+            editor.exportTimeline();
+            editor.flashJournal();
+        }
+
+        function exportAnalogSignals() {
+            // Export only the current frame to keep files tractable; full-timeline export can be added with RLE later.
+            editor.exportCurrentFrameSignalsCSV();
+            editor.flashJournal();
+        }
+
+        function projectKey(name){ return `ATE:project:${name||'default'}`; }
+
+        function saveProject(name='default'){
+          const data = {
+            keyframes: Array.from(editor.keyframes.entries()),
+            totalDuration: editor.totalDuration,
+            pixelsPerSecond: editor.pixelsPerSecond,
+            timelineOffset: editor.timelineOffset
+          };
+          localStorage.setItem(projectKey(name), JSON.stringify(data));
+          document.getElementById('saveStatus').textContent = `Saved ${new Date().toLocaleTimeString()}`;
+          editor.flashJournal();
+        }
+
+        function loadProject(name='default'){
+          const raw = localStorage.getItem(projectKey(name));
+          if(!raw) return;
+          const obj = JSON.parse(raw);
+          editor.keyframes = new Map(obj.keyframes);
+          editor.totalDuration = obj.totalDuration || editor.totalDuration;
+          editor.pixelsPerSecond = obj.pixelsPerSecond || editor.pixelsPerSecond;
+          editor.timelineOffset = obj.timelineOffset || 0;
+          editor.setupTimeline(); editor.updatePlayhead(); editor.updatePreview();
+        }
+
+        window.addEventListener('beforeunload', ()=>saveProject());
+
+        document.getElementById('importFile').addEventListener('change', (e)=>{
+          const f = e.target.files[0]; if(!f) return;
+          const r = new FileReader();
+          r.onload = ()=> {
+            const obj = JSON.parse(r.result);
+            editor.keyframes = new Map(obj.keyframes.map(k => [k.time, k.properties]));
+            editor.totalDuration = obj.duration || editor.totalDuration;
+            editor.setupTimeline(); editor.updatePlayhead(); editor.updatePreview();
+          };
+          r.readAsText(f);
+        });
+    </script>
+</body>
+</html>
