@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Visual LLM — Live IR</title>
+  <style>
+    body { margin:0; background:#0a0a0a; color:#0f0; font:14px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco; }
+    header { display:flex; gap:12px; align-items:center; padding:10px 12px; border-bottom:1px solid #183; }
+    input, button, textarea { background:#111; color:#0f0; border:1px solid #183; padding:6px 8px; border-radius:4px; }
+    button { cursor:pointer; }
+    #wrap { display:grid; grid-template-columns: 420px 1fr; height: calc(100vh - 52px); }
+    #left { border-right:1px solid #183; padding:12px; display:flex; flex-direction:column; gap:8px; }
+    #right { position:relative; }
+    #canvas { width:100%; height:100%; display:block; background:#000; }
+    #tokens { position:absolute; left:12px; right:12px; bottom:12px; background:#111a; padding:6px; border:1px solid #183; border-radius:4px; display:flex; gap:4px; overflow:hidden; }
+    .tok { background:#0f0; color:#000; padding:1px 4px; border-radius:3px; font-size:12px; }
+    .stat { color:#0ff; font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>🧠 Visual LLM — Live IR</strong>
+    <span class="stat" id="stat"></span>
+  </header>
+  <div id="wrap">
+    <div id="left">
+      <label>Prompt</label>
+      <textarea id="prompt" rows="8">Write a cozy cat adventure in an enchanted forest with a friendly twist.</textarea>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button id="run">Run</button>
+        <label>Server:</label>
+        <input id="srv" value="http://localhost:8844" style="flex:1" />
+      </div>
+      <div class="stat" id="status">Ready</div>
+      <div class="stat">Tip: edit code in your own app; this page only demonstrates token/IR streaming + draw.</div>
+    </div>
+    <div id="right">
+      <canvas id="canvas"></canvas>
+      <div id="tokens"></div>
+    </div>
+  </div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const tokenBox = document.getElementById('tokens');
+const stat = document.getElementById('stat');
+const statusEl = document.getElementById('status');
+let W = 0, H = 0, t0 = 0, steps = 0;
+
+function resize() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor(rect.height * dpr);
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  W = rect.width; H = rect.height;
+  clearCanvas();
+}
+window.addEventListener('resize', resize); resize();
+
+function clearCanvas() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+}
+
+function addToken(tok) {
+  const el = document.createElement('span');
+  el.className = 'tok';
+  el.textContent = tok;
+  tokenBox.appendChild(el);
+  if (tokenBox.childElementCount > 24) tokenBox.removeChild(tokenBox.firstChild);
+}
+
+// Minimal Visual IR renderer
+function renderOps(ops) {
+  for (const op of ops) {
+    if (op.op === 'TICK') {
+      steps = op.t; // could drive a progress bar / timeline
+    } else if (op.op === 'TEXT') {
+      ctx.fillStyle = '#0f0';
+      ctx.fillText(op.text, op.x || 10, op.y || 20);
+    } else if (op.op === 'BAR') {
+      const x = op.x || 10, y = op.y || 40, len = Math.max(0, op.len || 0);
+      ctx.fillStyle = '#0a0';
+      ctx.fillRect(x, y, len, 6);
+    } else if (op.op === 'RECT') {
+      ctx.strokeStyle = '#0f0';
+      ctx.strokeRect(op.x||8, op.y||8, op.w||100, op.h||60);
+    } else if (op.op === 'LINK') {
+      ctx.strokeStyle = 'rgba(0,255,255,0.6)';
+      ctx.beginPath();
+      ctx.moveTo(op.x1||0, op.y1||0);
+      ctx.lineTo(op.x2||0, op.y2||0);
+      ctx.stroke();
+    }
+  }
+}
+
+async function runOnce() {
+  const base = document.getElementById('srv').value.replace(/\/$/, '');
+  const prompt = document.getElementById('prompt').value;
+  const url = `${base}/stream?prompt=${encodeURIComponent(prompt)}&want_ir=1`;
+  tokenBox.innerHTML = '';
+  clearCanvas();
+  t0 = performance.now(); steps = 0;
+  statusEl.textContent = 'Connecting…';
+
+  const src = new EventSource(url);
+  src.onmessage = (e) => {
+    if (!e.data) return;
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'token') {
+        addToken(msg.text);
+      } else if (msg.type === 'ir' || msg.type === 'ir_summary') {
+        renderOps(msg.ops);
+      } else if (msg.type === 'done') {
+        const ms = (performance.now() - t0).toFixed(1);
+        stat.textContent = `steps=${steps} • ${ms}ms`;
+        statusEl.textContent = 'Done';
+        src.close();
+      }
+    } catch (err) {
+      // Non-JSON heartbeats are ignored
+    }
+  };
+  src.onerror = () => {
+    statusEl.textContent = 'Stream error (is the server running?)';
+    src.close();
+  };
+}
+
+document.getElementById('run').addEventListener('click', runOnce);
+</script>
+</body>
+</html>
