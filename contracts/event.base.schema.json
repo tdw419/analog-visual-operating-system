@@ -1,0 +1,17 @@
+{
+  "$id": "https://uvir.local/schema/event.base.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bridge Event Base",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [ "token", "ir", "ir_summary", "tool_call", "tool_result", "done", "error" ]
+    },
+    "run_id": { "$ref": "0_common.schema.json#/$defs/RunId" },
+    "step": { "$ref": "0_common.schema.json#/$defs/Step" },
+    "usage": { "$ref": "0_common.schema.json#/$defs/Usage" }
+  },
+  "required": [ "type", "run_id" ]
+}

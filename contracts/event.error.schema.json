@@ -1,0 +1,14 @@
+{
+  "$id": "https://uvir.local/schema/event.error.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Error Event",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "type": { "const": "error" },
+    "run_id": { "$ref": "0_common.schema.json#/$defs/RunId" },
+    "code": { "$ref": "0_common.schema.json#/$defs/String64" },
+    "message": { "$ref": "0_common.schema.json#/$defs/String256" }
+  },
+  "required": [ "type", "run_id", "code", "message" ]
+}

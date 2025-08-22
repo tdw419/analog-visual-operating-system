@@ -1,0 +1,15 @@
+{
+  "$id": "https://uvir.local/schema/event.tool_result.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tool Result Event",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "type": { "const": "tool_result" },
+    "run_id": { "$ref": "0_common.schema.json#/$defs/RunId" },
+    "name": { "$ref": "event.tool_call.schema.json#/properties/name" },
+    "ok": { "type": "boolean" },
+    "result": { "type": "object" }
+  },
+  "required": [ "type", "run_id", "name", "ok", "result" ]
+}

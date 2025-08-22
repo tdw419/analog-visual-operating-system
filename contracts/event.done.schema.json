@@ -1,0 +1,13 @@
+{
+  "$id": "https://uvir.local/schema/event.done.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Done Event",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "type": { "const": "done" },
+    "run_id": { "$ref": "0_common.schema.json#/$defs/RunId" },
+    "usage": { "$ref": "0_common.schema.json#/$defs/Usage" }
+  },
+  "required": [ "type", "run_id", "usage" ]
+}

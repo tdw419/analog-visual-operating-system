@@ -1,0 +1,108 @@
+{
+  "$id": "https://uvir.local/schema/uvir-op.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UVIR Operation",
+  "oneOf": [
+    {
+      "title": "TICK",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "TICK" },
+        "t": { "$ref": "0_common.schema.json#/$defs/Step" }
+      },
+      "required": [ "op", "t" ]
+    },
+    {
+      "title": "TEXT",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "TEXT" },
+        "x": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "y": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "text": { "$ref": "0_common.schema.json#/$defs/String256" },
+        "color": { "$ref": "0_common.schema.json#/$defs/ColorHex" },
+        "size": { "type": "integer", "minimum": 1, "maximum": 512 },
+        "layer": { "$ref": "0_common.schema.json#/$defs/Layer" }
+      },
+      "required": [ "op", "text" ]
+    },
+    {
+      "title": "BAR",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "BAR" },
+        "x": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "y": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "len": { "$ref": "0_common.schema.json#/$defs/Length" },
+        "label": { "$ref": "0_common.schema.json#/$defs/String64" },
+        "color": { "$ref": "0_common.schema.json#/$defs/ColorHex" },
+        "thickness": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "layer": { "$ref": "0_common.schema.json#/$defs/Layer" }
+      },
+      "required": [ "op", "x", "y", "len" ]
+    },
+    {
+      "title": "RECT",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "RECT" },
+        "x": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "y": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "w": { "type": "number", "minimum": 0, "maximum": 2000000 },
+        "h": { "type": "number", "minimum": 0, "maximum": 2000000 },
+        "color": { "$ref": "0_common.schema.json#/$defs/ColorHex" },
+        "fill": { "type": "boolean" },
+        "layer": { "$ref": "0_common.schema.json#/$defs/Layer" }
+      },
+      "required": [ "op", "x", "y", "w", "h" ]
+    },
+    {
+      "title": "LINK",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "LINK" },
+        "x1": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "y1": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "x2": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "y2": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "color": { "$ref": "0_common.schema.json#/$defs/ColorHex" },
+        "thickness": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "layer": { "$ref": "0_common.schema.json#/$defs/Layer" }
+      },
+      "required": [ "op", "x1", "y1", "x2", "y2" ]
+    },
+    {
+      "title": "IMG (optional)",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "IMG" },
+        "x": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "y": { "$ref": "0_common.schema.json#/$defs/Coord" },
+        "src": { "$ref": "0_common.schema.json#/$defs/String256" },
+        "w": { "type": "number", "minimum": 1, "maximum": 2000000 },
+        "h": { "type": "number", "minimum": 1, "maximum": 2000000 },
+        "layer": { "$ref": "0_common.schema.json#/$defs/Layer" }
+      },
+      "required": [ "op", "x", "y", "src" ]
+    },
+    {
+      "title": "EMIT_SIGNAL (optional)",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "EMIT_SIGNAL" },
+        "channel": { "$ref": "0_common.schema.json#/$defs/String64" },
+        "value": { "type": "number", "minimum": -1e9, "maximum": 1e9 },
+        "unit": { "$ref": "0_common.schema.json#/$defs/String64" },
+        "dt": { "type": "integer", "minimum": 0 }
+      },
+      "required": [ "op", "channel", "value" ]
+    }
+  ]
+}

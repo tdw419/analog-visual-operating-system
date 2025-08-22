@@ -1,0 +1,17 @@
+{
+  "$id": "https://uvir.local/schema/event.tool_call.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tool Call Event",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "type": { "const": "tool_call" },
+    "run_id": { "$ref": "0_common.schema.json#/$defs/RunId" },
+    "name": {
+      "type": "string",
+      "enum": [ "draw_ops", "set_slider", "serial_pwm" ]
+    },
+    "args": { "type": "object" }
+  },
+  "required": [ "type", "run_id", "name", "args" ]
+}

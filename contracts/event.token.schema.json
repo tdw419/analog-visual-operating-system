@@ -1,0 +1,14 @@
+{
+  "$id": "https://uvir.local/schema/event.token.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Token Event",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "type": { "const": "token" },
+    "run_id": { "$ref": "0_common.schema.json#/$defs/RunId" },
+    "step": { "$ref": "0_common.schema.json#/$defs/Step" },
+    "text": { "$ref": "0_common.schema.json#/$defs/String256" }
+  },
+  "required": [ "type", "run_id", "step", "text" ]
+}

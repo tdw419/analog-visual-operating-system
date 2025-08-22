@@ -1,0 +1,24 @@
+openapi: 3.1.0
+info: { title: LLM Bridge, version: "0.1" }
+paths:
+  /health: { get: { responses: { "200": { description: OK } } } }
+  /stream:
+    get:
+      parameters:
+        - { name: prompt, in: query, required: true, schema: { type: string } }
+        - { name: want_ir, in: query, schema: { type: boolean, default: true } }
+        - { name: topk, in: query, schema: { type: integer, default: 5 } }
+        - { name: temperature, in: query, schema: { type: number, default: 0.8 } }
+        - { name: top_p, in: query, schema: { type: number, default: 0.95 } }
+        - { name: max_tokens, in: query, schema: { type: integer, default: 512 } }
+        - { name: seed, in: query, schema: { type: integer, nullable: true } }
+      responses:
+        "200": { description: SSE (ndjson events) }
+  /runs/{run_id}/abort: { post: { responses: { "204": { description: Aborted } } } }
+  /tools/execute:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, required: [name,args], properties: { name: {type:string}, args: {type:object} } }
+      responses: { "200": { description: Tool result } }

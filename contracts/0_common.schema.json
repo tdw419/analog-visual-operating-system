@@ -1,0 +1,53 @@
+{
+  "$id": "https://uvir.local/schema/0_common.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UVIR Common Definitions",
+  "type": "object",
+  "$defs": {
+    "RunId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "Step": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ColorHex": {
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"
+    },
+    "Layer": {
+      "type": "integer",
+      "minimum": -32768,
+      "maximum": 32767
+    },
+    "Coord": {
+      "type": "number",
+      "minimum": -1000000,
+      "maximum": 1000000
+    },
+    "Length": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2000000
+    },
+    "String256": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "String64": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "Usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tokens_in": { "type": "integer", "minimum": 0 },
+        "tokens_out": { "type": "integer", "minimum": 0 }
+      },
+      "required": [ "tokens_in", "tokens_out" ]
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$id": "https://uvir.local/schema/event.any.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Any Bridge Event",
+  "oneOf": [
+    { "$ref": "event.token.schema.json" },
+    { "$ref": "event.ir.schema.json" },
+    { "$ref": "event.tool_call.schema.json" },
+    { "$ref": "event.tool_result.schema.json" },
+    { "$ref": "event.done.schema.json" },
+    { "$ref": "event.error.schema.json" }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "$id": "https://uvir.local/schema/event.ir.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IR Event",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "type": { "enum": [ "ir", "ir_summary" ] },
+    "run_id": { "$ref": "0_common.schema.json#/$defs/RunId" },
+    "step": { "$ref": "0_common.schema.json#/$defs/Step" },
+    "ops": {
+      "type": "array",
+      "items": { "$ref": "uvir-op.schema.json" },
+      "maxItems": 64
+    }
+  },
+  "required": [ "type", "run_id", "ops" ]
+}

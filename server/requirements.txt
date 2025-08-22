@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+sse-starlette
+llama-cpp-python
+python-json-logger
+json-repair
