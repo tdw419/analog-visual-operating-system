@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UVIR 1.0 Bridge</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0a0a0a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            height: 100vh;
+        }
+        .sidebar {
+            background: #111;
+            padding: 20px;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .canvas-container {
+            position: relative;
+            background: #000;
+        }
+        #uvir-canvas {
+            display: block;
+        }
+        .status-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 5px 10px;
+            border: 1px solid #333;
+            font-size: 12px;
+        }
+        input, textarea, button {
+            width: 100%;
+            background: #222;
+            color: #0f0;
+            border: 1px solid #333;
+            padding: 8px;
+            margin-bottom: 5px;
+            font-family: inherit;
+        }
+        button {
+            background: #363;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background: #474; }
+        button:disabled { background: #333; color: #666; cursor: not-allowed; }
+        .log {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: #000;
+            border: 1px solid #333;
+            padding: 10px;
+            font-size: 11px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+        .log-token { color: #0f0; }
+        .log-ir { color: #0ff; }
+        .log-tool { color: #f0f; }
+        .log-done { color: #0f0; font-weight: bold; }
+        .log-error { color: #f00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>UVIR 1.0 Bridge</h2>
+            <textarea id="prompt-input" placeholder="Enter your prompt...">Set LED on pin 13 to value 128</textarea>
+            <input type="text" id="server-url" value="http://localhost:8844" placeholder="Server URL">
+            <div style="display: flex; gap: 5px;">
+                <button id="run-btn" onclick="run()">Run</button>
+                <button id="stop-btn" onclick="stop()" disabled>Stop</button>
+                <button onclick="clearCanvas()">Clear</button>
+            </div>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="replay-id" placeholder="Run ID to replay">
+                <button onclick="replay()">Replay</button>
+            </div>
+            <hr>
+            <h3>Event Log</h3>
+            <div id="event-log" class="log"></div>
+        </div>
+        <div class="canvas-container">
+            <canvas id="uvir-canvas"></canvas>
+            <div id="status" class="status-bar">Ready.</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('uvir-canvas');
+        const ctx = canvas.getContext('2d');
+        const eventLog = document.getElementById('event-log');
+        const statusEl = document.getElementById('status');
+        let eventSource = null;
+        let isRunning = false;
+
+        // Initialize canvas
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            ctx.font = '12px "Courier New", monospace';
+            ctx.textBaseline = 'top';
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            addLogEntry("Canvas cleared.", "log-done");
+        }
+
+        function addLogEntry(text, className = "") {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${className}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+            eventLog.appendChild(entry);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+
+        // UVIR Renderer
+        function renderUVIROps(ops) {
+            if (!ops || !Array.isArray(ops)) return;
+            ctx.save();
+            for (const op of ops) {
+                try {
+                    switch (op.op) {
+                        case 'TICK':
+                            ctx.fillStyle = '#0ff';
+                            ctx.fillRect((op.t || 0) * 3, 5, 2, 15);
+                            break;
+                        case 'TEXT':
+                            ctx.fillStyle = op.color || '#0f0';
+                            ctx.font = `${op.size || 12}px "Courier New"`;
+                            ctx.fillText(op.text || '', op.x || 0, op.y || 0);
+                            break;
+                        case 'BAR':
+                            ctx.fillStyle = op.color || '#0a0';
+                            const barHeight = 20;
+                            ctx.fillRect(op.x || 0, op.y || 0, op.len || 0, barHeight);
+                            if (op.label) {
+                                ctx.fillStyle = '#fff';
+                                ctx.fillText(op.label, (op.x || 0), (op.y || 0) + barHeight + 2);
+                            }
+                            break;
+                        case 'RECT':
+                            ctx.strokeStyle = op.color || '#0f0';
+                            if (op.fill) {
+                                ctx.fillStyle = op.color || '#0f0';
+                                ctx.fillRect(op.x || 0, op.y || 0, op.w || 0, op.h || 0);
+                            } else {
+                                ctx.strokeRect(op.x || 0, op.y || 0, op.w || 0, op.h || 0);
+                            }
+                            break;
+                        case 'LINK':
+                            ctx.strokeStyle = op.color || '#0ff';
+                            ctx.beginPath();
+                            ctx.moveTo(op.x1 || 0, op.y1 || 0);
+                            ctx.lineTo(op.x2 || 0, op.y2 || 0);
+                            ctx.stroke();
+                            break;
+                    }
+                } catch (e) {
+                    console.error("Error rendering op:", op, e);
+                }
+            }
+            ctx.restore();
+        }
+
+        // Server Communication
+        async function run() {
+            if (isRunning) return;
+            isRunning = true;
+            document.getElementById('run-btn').disabled = true;
+            document.getElementById('stop-btn').disabled = false;
+            statusEl.textContent = "Connecting...";
+
+            const prompt = document.getElementById('prompt-input').value;
+            const serverUrl = document.getElementById('server-url').value;
+            clearCanvas();
+            addLogEntry(`Starting: "${prompt}"`, "log-done");
+
+            try {
+                const response = await fetch(`${serverUrl}/stream`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, want_ir: true })
+                });
+
+                if (!response.body) {
+                    throw new Error("Response has no body");
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                eventSource = {
+                    close: () => reader.cancel()
+                };
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        break;
+                    }
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                handleEvent(data);
+                            } catch (e) {
+                                addLogEntry(`Parse error: ${line}`, "log-error");
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                addLogEntry(`Error: ${error.message}`, "log-error");
+                stop();
+            }
+        }
+
+        function stop() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            isRunning = false;
+            document.getElementById('run-btn').disabled = false;
+            document.getElementById('stop-btn').disabled = true;
+            statusEl.textContent = "Stopped.";
+        }
+
+        function handleEvent(data) {
+            addLogEntry(`${data.type}: ${JSON.stringify(data)}`, `log-${data.type}`);
+            statusEl.textContent = `Receiving: ${data.type}`;
+
+            switch (data.type) {
+                case 'token':
+                    // Token received, could be displayed elsewhere
+                    break;
+                case 'ir':
+                    renderUVIROps(data.ops);
+                    break;
+                case 'tool_call':
+                    // Visual feedback for tool call
+                    ctx.fillStyle = '#f0f';
+                    ctx.fillText(`Tool: ${data.name}(${JSON.stringify(data.args)})`, 10, canvas.height - 30);
+                    break;
+                case 'tool_result':
+                    // Visual feedback for tool result
+                    ctx.fillStyle = data.ok ? '#0f0' : '#f00';
+                    ctx.fillText(`Result: ${data.ok ? 'OK' : 'ERROR'} - ${JSON.stringify(data.result)}`, 10, canvas.height - 15);
+                    break;
+                case 'done':
+                    addLogEntry("Generation complete.", "log-done");
+                    statusEl.textContent = "Done.";
+                    stop();
+                    break;
+                case 'error':
+                    addLogEntry(`Error: ${data.error}`, "log-error");
+                    statusEl.textContent = "Error.";
+                    stop();
+                    break;
+            }
+        }
+
+        async function replay() {
+            const runId = document.getElementById('replay-id').value;
+            if (!runId) return;
+            stop();
+            clearCanvas();
+            addLogEntry(`Replaying: ${runId}`, "log-done");
+            statusEl.textContent = "Replaying...";
+
+            const serverUrl = document.getElementById('server-url').value;
+            try {
+                const response = await fetch(`${serverUrl}/replay/${runId}`);
+                if (!response.body) {
+                    throw new Error("Response has no body");
+                }
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                handleEvent(data);
+                                await new Promise(resolve => setTimeout(resolve, 50)); // delay for viz
+                            } catch (e) {
+                                // ignore parse errors
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                addLogEntry("Replay error. Run ID not found.", "log-error");
+                stop();
+            }
+        }
+    </script>
+</body>
+</html>
