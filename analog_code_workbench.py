@@ -25,7 +25,7 @@ import tkinter as tk
 from tkinter import scrolledtext, Canvas, PhotoImage, Button
 from PIL import Image, ImageDraw, ImageTk
 import re, math
-import importlib.util, traceback  # For dynamic import of python_viewer
+import importlib.util, traceback, os, inspect, pathlib # For dynamic import
 
 # Embed minimal px_tiles_v2 codec (opcodes, pack/unpack, draw/sample, make_page)
 TILE=16; PAYLOAD=12; MARGIN=2; MINICELL=3; BLACK=0; WHITE=255
@@ -34,12 +34,37 @@ def to_i8(u): return u-256 if u>127 else u
 def split_u8(n): return ((n>>4)&0xF, n&0xF)
 def join_u8(hi,lo): return ((hi&0xF)<<4)|(lo&0xF)
 def parity_nibble(op, hi, lo): return (op ^ hi ^ lo) & 0xF
-def pack_bits(op, operand):
-    op &= 0xF; hi,lo = split_u8(operand&0xFF); par = parity_nibble(op,hi,lo)
-    nibbles=[op,hi,lo,par]; bits=[]
-    for nib in nibbles:
-        for i in range(4): bits.append((nib>>i)&1)
-    return bits
+def pack_bits(opcode, operand):
+    # Data bits: 12 = 4(op) + 8(operand), least-significant bit first per nibble
+    def bits_of_nibble(n):
+        return [(n >> i) & 1 for i in range(4)]  # LSB→MSB
+
+    data = bits_of_nibble(opcode & 0xF) + \
+           bits_of_nibble((operand >> 4) & 0xF) + \
+           bits_of_nibble(operand & 0xF)  # total 12 bits
+
+    # Hamming(16,12) layout: positions 1..16; parity at 1,2,4,8
+    # Fill data into non-parity positions: 3,5,6,7,9,10,11,12,13,14,15,16
+    code = [0]*17  # 1-indexed
+    data_positions = [3,5,6,7,9,10,11,12,13,14,15,16]
+    for b, pos in zip(data, data_positions):
+        code[pos] = b
+
+    # Compute parity bits p1 (pos1), p2 (pos2), p4 (pos4), p8 (pos8)
+    def parity_for(mask_bit):
+        acc = 0
+        for i in range(1,17):
+            if i & mask_bit:
+                acc ^= code[i]
+        return acc
+
+    code[1] = parity_for(0b0001)  # covers positions with bit0=1
+    code[2] = parity_for(0b0010)  # covers bit1
+    code[4] = parity_for(0b0100)  # covers bit2
+    code[8] = parity_for(0b1000)  # covers bit3
+
+    # Return 16 bits (row-major 4×4 payload) as list LSB→MSB per row
+    return [code[i] for i in range(1,17)]
 def draw_tile(op, operand):
     img=Image.new('L',(TILE,TILE),WHITE); d=ImageDraw.Draw(img)
     bits=pack_bits(op,operand); x0=MARGIN; y0=MARGIN
@@ -232,26 +257,46 @@ class Workbench(tk.Tk):
     def run_viewer(self):
         VA = ViewerAdapter
         VA.reset()
-        module_name = "python_viewer"
-        func_name = "run_python_viewer"
+
+        module_name = os.getenv("ACW_VIEWER_MODULE", "python_viewer")
+        func_name   = os.getenv("ACW_VIEWER_FUNC",   "run_python_viewer")
+
         try:
             spec = importlib.util.spec_from_file_location(module_name, f"{module_name}.py")
+            if not spec or not spec.loader:
+                raise ImportError(f"Could not find or load module: {module_name}.py")
+
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             func = getattr(mod, func_name)
             func()
         except Exception as e:
             traceback.print_exc()
+            err = traceback.format_exc()
             self.p3.delete('1.0', tk.END)
-            self.p3.insert(tk.END, "# ERROR: failed to run viewer.\n" + traceback.format_exc())
+            self.p3.insert(tk.END, "# ERROR: failed to run viewer.\n" + err)
             return
+
         csv_text = VA.get_captured_csv()
         self.p3.delete('1.0', tk.END)
         self.p3.insert(tk.END, csv_text)
+
         ops = csv_to_ops(csv_text)
-        self.p1.delete('1.0', tk.END)
-        self.p1.insert(tk.END, "# Traced from Python Viewer\n# (Original source here or load from file)")
         self.update_panes(ops, csv_text)
+
+        # Mirror source into Pane 1
+        try:
+            src = inspect.getsource(mod)
+        except TypeError:
+            try:
+                src = pathlib.Path(mod.__file__).read_text(encoding="utf-8")
+            except Exception:
+                src = f"# Source for {module_name}.py unavailable"
+        except Exception:
+            src = f"# Source for {module_name}.py unavailable"
+
+        self.p1.delete('1.0', tk.END)
+        self.p1.insert(tk.END, src)
 
 if __name__ == "__main__":
     Workbench().mainloop()
