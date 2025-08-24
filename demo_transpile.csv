@@ -1,0 +1,9 @@
+frame,op,param1,param2,param3
+0,SET_VAR,x,100,
+1,SET_VAR,y,hello,
+2,PRINT,Starting the demo...,,
+3,LOOP_START,i,0,3
+4,PRINT,Inside the loop,,
+5,SET_VAR,z,expr,
+6,LOOP_END,,,
+7,PRINT,Demo finished.,,
