@@ -1,0 +1,26 @@
+[project]
+name = "visualpython"
+version = "0.2.0"
+description = "Direct visual execution of Python code without traditional compilation"
+readme = "docs/README.md"
+authors = [{ name = "Grok (built by xAI)", email = "support@x.ai" }]
+license = { file = "LICENSE.txt" }
+requires-python = ">=3.7"
+dependencies = []
+
+[project.optional-dependencies]
+watchdog = ["watchdog>=2.1.5"]
+pygame = ["pygame>=2.1.0"]
+web = ["flask>=2.0.0", "flask-socketio>=5.1.0"]
+
+[project.scripts]
+visualpython = "visualpython.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+Homepage = "https://example.com/visual-python"
+Repository = "https://github.com/xai-org/visualpython"
+Documentation = "https://example.com/visual-python/docs"

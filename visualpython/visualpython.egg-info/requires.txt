@@ -1,0 +1,10 @@
+
+[pygame]
+pygame>=2.1.0
+
+[watchdog]
+watchdog>=2.1.5
+
+[web]
+flask>=2.0.0
+flask-socketio>=5.1.0

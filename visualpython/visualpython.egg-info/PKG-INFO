@@ -1,0 +1,97 @@
+Metadata-Version: 2.4
+Name: visualpython
+Version: 0.2.0
+Summary: Direct visual execution of Python code without traditional compilation
+Author-email: "Grok (built by xAI)" <support@x.ai>
+License: MIT License
+
+        Copyright (c) 2025 xAI
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to deal
+        in the Software without restriction, including without limitation the rights
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+        copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in all
+        copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        SOFTWARE.
+
+Project-URL: Homepage, https://example.com/visual-python
+Project-URL: Repository, https://github.com/xai-org/visualpython
+Project-URL: Documentation, https://example.com/visual-python/docs
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Provides-Extra: watchdog
+Requires-Dist: watchdog>=2.1.5; extra == "watchdog"
+Provides-Extra: pygame
+Requires-Dist: pygame>=2.1.0; extra == "pygame"
+Provides-Extra: web
+Requires-Dist: flask>=2.0.0; extra == "web"
+Requires-Dist: flask-socketio>=5.1.0; extra == "web"
+Dynamic: license-file
+
+# VisualPython
+
+A revolutionary Python library for executing code as immediate visual operations, bypassing traditional compilation.
+
+## Installation
+```bash
+pip install visualpython
+# Optional dependencies for enhanced features
+pip install visualpython[watchdog,pygame,web]
+```
+
+## Quick Start
+```bash
+# Run a script directly
+visualpython run examples/demo_live.py
+# Monitor a script for live updates
+visualpython live examples/demo_live.py --interval 0.2
+```
+
+## Features
+- **Direct Visual Execution**: Parse Python code via AST and render as visuals (text, bars, tick marks).
+- **Live File Monitoring**: Detect file changes in ~100ms and update visuals instantly.
+- **Bitmap Font**: Pixel-perfect 5x7 font for text rendering.
+- **Timeline OS Integration**: Code execution maps to keyframes, starting with font foundation at keyframe 5.0.
+- **Hardware-Ready**: Export signals as CSV for Arduino/LED control.
+- **Multiple Backends**: Tkinter (default), with plans for Pygame and web.
+
+## Example
+Create `demo_live.py`:
+```python
+x = 100
+y = 150
+size = 30
+print("Direct Python Execution!")
+print(f"Position: ({x}, {y})")
+for i in range(3):
+    offset = i * 40
+    print(f"Element {i} at offset {offset}")
+```
+
+Run:
+```bash
+visualpython live demo_live.py
+```
+
+Edit `demo_live.py` (e.g., change `x = 200`) and watch the canvas update instantly!
+
+## Roadmap
+- Support for `if/else`, functions, and more Python constructs.
+- Pygame and web backends.
+- Hardware integration (serial communication).
+- PyPI release.
+
+## License
+MIT License
