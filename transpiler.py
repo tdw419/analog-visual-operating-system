@@ -27,14 +27,35 @@ class PythonToCsvTranspiler(ast.NodeVisitor):
             self.frame += 1
         self.generic_visit(node)
 
+    def _get_arg_value(self, arg):
+        """Helper to get value from ast.Constant or ast.Name."""
+        if isinstance(arg, ast.Constant):
+            return arg.value
+        elif isinstance(arg, ast.Name):
+            # For now, we just use the variable name.
+            # A more complex implementation would look up the variable's value.
+            return arg.id
+        return None # Or raise an error
+
     def visit_Expr(self, node):
         if isinstance(node.value, ast.Call):
             call = node.value
-            if isinstance(call.func, ast.Name) and call.func.id == 'print':
-                if len(call.args) == 1 and isinstance(call.args[0], ast.Constant):
-                    text = call.args[0].value
-                    self.csv_ops.append([self.frame, 'PRINT', text, '', ''])
+            if isinstance(call.func, ast.Name):
+                func_name = call.func.id
+                args = [self._get_arg_value(arg) for arg in call.args]
+
+                if func_name == 'print':
+                    if len(args) == 1:
+                        self.csv_ops.append([self.frame, 'PRINT', args[0], '', ''])
+                        self.frame += 1
+                elif func_name == 'CLS':
+                    self.csv_ops.append([self.frame, 'CLS', '', '', ''])
                     self.frame += 1
+                elif func_name == 'PIXEL':
+                    if len(args) == 3:
+                        x, y, color = args
+                        self.csv_ops.append([self.frame, 'PIXEL', x, y, color])
+                        self.frame += 1
         self.generic_visit(node)
 
     def visit_For(self, node):

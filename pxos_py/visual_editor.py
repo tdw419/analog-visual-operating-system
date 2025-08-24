@@ -2,6 +2,9 @@ import numpy as np
 from pxos_py.window import PixelWindow
 from pxos_py.font import PixelFont
 from pxos_py.color import rgba
+from transpiler import PythonToCsvTranspiler
+import io
+import csv
 
 class VisualToolbox:
     def __init__(self):
@@ -64,6 +67,21 @@ class CodeCanvas:
         # Handle clicks on the code canvas
         pass
 
+    def buffer_as_surface(self):
+        """Converts the internal numpy buffer to a pygame Surface."""
+        import pygame
+        # Convert float (0-1) to uint8 (0-255)
+        # We need to clip to handle potential floating point inaccuracies
+        int_buffer = np.clip(self.buffer * 255, 0, 255).astype(np.uint8)
+
+        # The buffer is (height, width, channels), but make_surface expects (width, height, channels)
+        # So we need to transpose the first two axes.
+        # We only need the RGB channels for make_surface.
+        rgb_buffer = int_buffer[:, :, :3]
+
+        # Pygame's surfarray has dimensions swapped (width, height) vs numpy (height, width)
+        return pygame.surfarray.make_surface(rgb_buffer.transpose(1, 0, 2))
+
 class VisualCodeEditor(PixelWindow):
     def __init__(self, px, x, y, width, height):
         super().__init__(px, x, y, width, height, "Visual Editor")
@@ -94,12 +112,39 @@ class VisualCodeEditor(PixelWindow):
     def set_code(self, code):
         self.code = code
         self.needs_redraw = True
+        self.transpile_to_ir()
+
+    def transpile_to_ir(self):
+        if self.language == "python":
+            transpiler = PythonToCsvTranspiler()
+            try:
+                csv_ops = transpiler.transpile(self.code)
+
+                # Format to CSV string for display/logging
+                output = io.StringIO()
+                writer = csv.writer(output)
+                writer.writerow(['frame', 'op', 'param1', 'param2', 'param3'])
+                writer.writerows(csv_ops)
+                csv_string = output.getvalue()
+
+                # For now, just print it for verification
+                print("--- Transpiled IR (CSV) ---")
+                print(csv_string)
+                print("---------------------------")
+                return csv_ops
+            except Exception as e:
+                print(f"Error during transpilation: {e}")
+                return None
+        return None
 
     def render_content(self):
-        self.canvas.render(self.buffer, self.code, self.language)
-        self.toolbox.render(self.buffer)
-        if self.preview_buffer:
-            self.px.blit(self.buffer, self.preview_buffer, self.width - 220, 20)
+        # The buffer to draw on belongs to the canvas.
+        self.canvas.render(self.canvas.buffer, self.code, self.language)
+        self.toolbox.render(self.canvas.buffer)
+        # The preview logic seems buggy and incomplete, disabling for now.
+        # preview = self.get_pixel_preview()
+        # if preview:
+        #     self.px.blit(preview, self.canvas.buffer, self.width - 220, 20)
 
     def get_pixel_preview(self):
         if self.language == "pxasm":
