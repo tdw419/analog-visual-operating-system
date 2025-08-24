@@ -1,0 +1,7 @@
+# A simple program for the Trivial Calculator Language
+SET a, 10
+SET b, 20
+ADD a, b
+PRINT a
+SUB a, 5
+PRINT a
