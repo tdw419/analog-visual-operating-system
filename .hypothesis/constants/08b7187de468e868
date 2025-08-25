@@ -1,0 +1,4 @@
+# file: /app/pxos_py/kernels.py
+# hypothesis_version: 6.138.3
+
+[0.5, 1.0, 6.0, 'blur', 'color_transform', 'edge', 'hsl', 'move', 'rgb', 'thresh']

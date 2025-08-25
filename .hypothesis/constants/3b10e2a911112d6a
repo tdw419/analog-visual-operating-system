@@ -1,0 +1,4 @@
+# file: /app/hlir_to_py.py
+# hypothesis_version: 6.138.3
+
+[', ', 'COMMIT', 'DAC_WRITE', 'FILTER', 'INTEGRATE', 'MULTIPLY', 'RECT', 'SLEEP', 'SUM', 'SYNC_ROW', 'VA', 'b', 'g', 'h', 'inputs', 'op', 'program', 'r', 'w', 'x', 'y']

@@ -1,0 +1,4 @@
+# file: /app/transpiler.py
+# hypothesis_version: 6.138.3
+
+['COMMIT', 'DAC_WRITE', 'FILTER', 'INTEGRATE', 'MULTIPLY', 'RECT', 'SLEEP', 'SUM', 'SYNC_ROW', 'b', 'ch', 'cols', 'default', 'dst', 'exec', 'fc', 'g', 'gain', 'h', 'i', 'inputs', 'meta', 'ms', 'op', 'output', 'profile', 'program', 'pxos-ops/1.0', 'r', 'schemaVersion', 'src', 'tau', 'type', 'unsafe expression', 'unsupported constant', 'val', 'w', 'x', 'y']

@@ -1,0 +1,4 @@
+# file: /app/pxos_schema.py
+# hypothesis_version: 6.138.3
+
+[255, 65535, '$id', '$schema', 'COMMIT', 'DAC_WRITE', 'FILTER', 'INTEGRATE', 'MULTIPLY', 'PXOS Operations', 'RECT', 'SLEEP', 'SUM', 'SYNC_ROW', 'additionalProperties', 'array', 'b', 'ch', 'const', 'dst', 'exclusiveMinimum', 'fc', 'g', 'gain', 'h', 'i', 'inputs', 'integer', 'items', 'maximum', 'meta', 'minItems', 'minimum', 'ms', 'number', 'object', 'oneOf', 'op', 'output', 'program', 'properties', 'pxos-ops/1.0', 'r', 'required', 'schemaVersion', 'src', 'string', 'tau', 'title', 'type', 'val', 'w', 'x', 'y']

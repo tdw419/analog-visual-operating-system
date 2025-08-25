@@ -1,0 +1,4 @@
+# file: /app/pxos_dsl.py
+# hypothesis_version: 6.138.3
+
+['"', '"[^"]*"', ',', '-?\\d+(\\.\\d+)?', '.', '=', 'COMMA', 'EQUALS', 'LBRACKET', 'LPAREN', 'NUMBER', 'OP', 'RBRACKET', 'RPAREN', 'STRING', 'Syntax error at EOF', '[', '[A-Za-z_]+', '\\#.*', '\\(', '\\)', '\\[', '\\]', ']', 'cols', 'default', 'meta', 'op', 'profile', 'program', 'pxos-ops/1.0', 'schemaVersion']

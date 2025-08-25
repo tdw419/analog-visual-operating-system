@@ -1,0 +1,4 @@
+# file: /app/lineage_sentinel.py
+# hypothesis_version: 6.138.3
+
+[0.001, 0.05, 0.1, 10.0, 100, 255, 5000, 10000, 'COMMIT', 'DAC_WRITE', 'FILTER', 'INTEGRATE', 'MULTIPLY', 'P1', 'P2', 'P3', 'P5', 'RECT', 'SLEEP', 'SUM', '__main__', 'b', 'bp', 'ch', 'cols', 'default', 'dst', 'error', 'fc', 'g', 'gain', 'h', 'hall_of_drift', 'hp', 'inputs', 'lp', 'meta', 'mock_llir', 'mock_tile', 'ms', 'notch', 'ok', 'op', 'output', 'profile', 'program', 'pxos-ops/1.0', 'r', 'schemaVersion', 'src', 'tau', 'type', 'val', 'w', 'x', 'y']
