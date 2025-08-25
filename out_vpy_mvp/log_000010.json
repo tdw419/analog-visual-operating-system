@@ -1,0 +1,10 @@
+{
+  "frame": 10,
+  "pc": 11,
+  "source": [
+    "(3*7)+4"
+  ],
+  "decoded": "(3*7)+4=================================",
+  "result": "Err: invalid syntax (<string>, line 1)",
+  "crc_ok": true
+}
