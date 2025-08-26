@@ -4,13 +4,7 @@
   "source": [
     "1+2"
   ],
-  "decoded": [
-    "1+2"
-  ],
+  "decoded": "",
   "result": "3",
-  "crc_ok": true,
-  "decode_forensics": {
-    "mismatch_count": 0,
-    "mismatches": []
-  }
+  "crc_ok": true
 }

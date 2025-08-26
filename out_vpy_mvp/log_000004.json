@@ -1,16 +1,10 @@
 {
   "frame": 4,
-  "pc": 5,
+  "pc": 1,
   "source": [
-    "(3*7)+4"
+    "1+2"
   ],
-  "decoded": [
-    "(3*7)+4"
-  ],
-  "result": "25",
-  "crc_ok": true,
-  "decode_forensics": {
-    "mismatch_count": 0,
-    "mismatches": []
-  }
+  "decoded": "",
+  "result": "3",
+  "crc_ok": true
 }

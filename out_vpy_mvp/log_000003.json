@@ -1,65 +1,10 @@
 {
   "frame": 3,
-  "pc": 4,
+  "pc": 1,
   "source": [
-    "sum(range(5))"
+    "1+2"
   ],
-  "decoded": [
-    "   (     (5))"
-  ],
-  "result": "SyntaxErr: unexpected indent",
-  "crc_ok": true,
-  "decode_forensics": {
-    "mismatch_count": 8,
-    "mismatches": [
-      {
-        "row": 0,
-        "col": 0,
-        "expected": "s",
-        "got": " "
-      },
-      {
-        "row": 0,
-        "col": 1,
-        "expected": "u",
-        "got": " "
-      },
-      {
-        "row": 0,
-        "col": 2,
-        "expected": "m",
-        "got": " "
-      },
-      {
-        "row": 0,
-        "col": 4,
-        "expected": "r",
-        "got": " "
-      },
-      {
-        "row": 0,
-        "col": 5,
-        "expected": "a",
-        "got": " "
-      },
-      {
-        "row": 0,
-        "col": 6,
-        "expected": "n",
-        "got": " "
-      },
-      {
-        "row": 0,
-        "col": 7,
-        "expected": "g",
-        "got": " "
-      },
-      {
-        "row": 0,
-        "col": 8,
-        "expected": "e",
-        "got": " "
-      }
-    ]
-  }
+  "decoded": "",
+  "result": "3",
+  "crc_ok": true
 }
