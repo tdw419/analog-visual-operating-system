@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>PixelVM — run pixel programs (no Python needed)</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0a0f1a; color:#e2e8f0; margin:0; }
+  header { padding: 16px 20px; background:#0e1726; border-bottom:1px solid #1f2a44; }
+  main { padding: 20px; max-width: 960px; margin: 0 auto; }
+  .row { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  .btn { background:#1e40af; color:#dbeafe; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; }
+  .btn:hover { background:#3b82f6; }
+  #log { background:#0b1220; border:1px solid #1f2a44; padding:12px; border-radius:10px; height:200px; overflow:auto; white-space:pre-wrap; }
+  canvas { background:#0b1220; border:1px solid #1f2a44; border-radius:10px; }
+  code { color:#a5b4fc; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PixelVM — pixel-program virtual machine</h1>
+  <p>Upload a program image (PNG/PPM) and run it directly in your browser.</p>
+</header>
+<main>
+  <div class="row">
+    <input id="file" type="file" accept="image/png,image/bmp,image/jpeg"/>
+    <button class="btn" id="run">Run</button>
+    <button class="btn" id="step">Step</button>
+    <button class="btn" id="reset">Reset</button>
+  </div>
+  <p>Spec: 1 pixel = 1 instruction, row-major. <code>PUSHI</code> etc. use the next pixel for a 24-bit signed immediate (two's complement in RGB).</p>
+  <canvas id="canvas" width="1" height="1"></canvas>
+  <h3>Output</h3>
+  <div id="log"></div>
+  <h3>Palette</h3>
+  <pre><code>
+NOP(0,0,0) HALT(255,255,255) PUSHI(0,0,255) ADD(0,255,0) SUB(255,0,0) MUL(255,128,0)
+DIV(0,255,255) MOD(128,0,255) DUP(128,128,128) SWAP(255,0,255) PRINT(255,255,0) LOAD(0,0,128) STORE(0,128,0)
+JMP(128,0,0) JZ(0,128,128) JNZ(128,128,0)
+  </code></pre>
+</main>
+<script>
+const OPCODES = new Map([
+  [[0,0,0].toString(),   ['NOP',0]],
+  [[255,255,255].toString(), ['HALT',0]],
+  [[0,0,255].toString(), ['PUSHI',1]],
+  [[0,255,0].toString(), ['ADD',0]],
+  [[255,0,0].toString(), ['SUB',0]],
+  [[255,128,0].toString(), ['MUL',0]],
+  [[0,255,255].toString(), ['DIV',0]],
+  [[128,0,255].toString(), ['MOD',0]],
+  [[128,128,128].toString(), ['DUP',0]],
+  [[255,0,255].toString(), ['SWAP',0]],
+  [[255,255,0].toString(), ['PRINT',0]],
+  [[0,0,128].toString(), ['LOAD',1]],
+  [[0,128,0].toString(), ['STORE',1]],
+  [[128,0,0].toString(), ['JMP',1]],
+  [[0,128,128].toString(), ['JZ',1]],
+  [[128,128,0].toString(), ['JNZ',1]],
+]);
+function rgb24_to_int(r,g,b){
+  let v = (b<<16) | (g<<8) | r;
+  if (v >= (1<<23)) v -= (1<<24);
+  return v;
+}
+function int_to_rgb24(v){
+  if (v < -(1<<23) || v >= (1<<23)) throw new Error("imm out of range");
+  if (v < 0) v = (1<<24) + v;
+  return [v & 0xFF, (v>>8)&0xFF, (v>>16)&0xFF];
+}
+class PixelVM {
+  constructor(pixels, width, height, logEl){
+    this.pixels = pixels; // Uint8ClampedArray [r,g,b,a,...]
+    this.width = width; this.height = height;
+    this.logEl = logEl;
+    this.ip = 0;
+    this.stack = [];
+    this.vars = new Map();
+    this.halted = false;
+  }
+  pix(idx){
+    const i = idx*4;
+    return [this.pixels[i], this.pixels[i+1], this.pixels[i+2]];
+  }
+  fetch(){
+    if (this.ip >= this.width*this.height) return ['HALT', null];
+    const rgb = this.pix(this.ip);
+    const key = rgb.toString();
+    const info = OPCODES.get(key);
+    if (!info) throw new Error(`Unknown opcode color at word ${this.ip}: ${key}`);
+    let [name, nargs] = info;
+    let imm = null;
+    if (nargs === 1){
+      if (this.ip+1 >= this.width*this.height) throw new Error("Truncated immediate");
+      const [r,g,b] = this.pix(this.ip+1);
+      imm = rgb24_to_int(r,g,b);
+    }
+    return [name, imm];
+  }
+  step(){
+    const [name, imm] = this.fetch();
+    const consumed = 1 + ((imm!==null && ['PUSHI','LOAD','STORE','JMP','JZ','JNZ'].includes(name))?1:0);
+    this.ip += consumed;
+    switch(name){
+      case 'NOP': return;
+      case 'HALT': this.halted = true; return;
+      case 'PUSHI': this.stack.push(imm); return;
+      case 'ADD': { const b=this.stack.pop(), a=this.stack.pop(); this.stack.push(a+b); return; }
+      case 'SUB': { const b=this.stack.pop(), a=this.stack.pop(); this.stack.push(a-b); return; }
+      case 'MUL': { const b=this.stack.pop(), a=this.stack.pop(); this.stack.push(a*b); return; }
+      case 'DIV': { const b=this.stack.pop(), a=this.stack.pop(); this.stack.push( (a/b)|0 ); return; }
+      case 'MOD': { const b=this.stack.pop(), a=this.stack.pop(); this.stack.push(a % b); return; }
+      case 'DUP': this.stack.push(this.stack[this.stack.length-1]); return;
+      case 'SWAP': { const L=this.stack.length; [this.stack[L-1], this.stack[L-2]]=[this.stack[L-2], this.stack[L-1]]; return; }
+      case 'PRINT': { const v=this.stack.pop(); this.log(`PRINT ${v}`); return; }
+      case 'LOAD': { const v=this.vars.get(imm)||0; this.stack.push(v); return; }
+      case 'STORE': { const v=this.stack.pop(); this.vars.set(imm,v); return; }
+      case 'JMP': this.ip = imm; return;
+      case 'JZ': { const v=this.stack.pop(); if (v===0) this.ip = imm; return; }
+      case 'JNZ': { const v=this.stack.pop(); if (v!==0) this.ip = imm; return; }
+    }
+  }
+  run(maxSteps=100000){
+    let steps=0;
+    while(!this.halted && steps<maxSteps){ this.step(); steps++; }
+    if (steps>=maxSteps) throw new Error("Max steps exceeded");
+    this.log("HALT");
+  }
+  log(msg){
+    this.logEl.textContent += msg + "\n";
+    this.logEl.scrollTop = this.logEl.scrollHeight;
+  }
+}
+const fileInput = document.getElementById('file');
+const runBtn = document.getElementById('run');
+const stepBtn = document.getElementById('step');
+const resetBtn = document.getElementById('reset');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const logEl = document.getElementById('log');
+let vm = null;
+let loaded = false;
+fileInput.addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = ()=>{
+    canvas.width = img.width; canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    vm = new PixelVM(data, canvas.width, canvas.height, logEl);
+    loaded = true;
+    logEl.textContent = "Program loaded. Click Run or Step.\n";
+  };
+  img.src = URL.createObjectURL(file);
+});
+runBtn.addEventListener('click', ()=>{
+  if (!loaded || !vm){ logEl.textContent += "Load an image first.\n"; return; }
+  try { vm.run(); } catch(err){ logEl.textContent += "Error: " + err.message + "\n"; }
+});
+stepBtn.addEventListener('click', ()=>{
+  if (!loaded || !vm){ logEl.textContent += "Load an image first.\n"; return; }
+  try { if(!vm.halted){ vm.step(); } else { logEl.textContent += "Already halted.\n"; } } catch(err){ logEl.textContent += "Error: " + err.message + "\n"; }
+});
+resetBtn.addEventListener('click', ()=>{
+  if (!loaded || !vm) return;
+  const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  vm = new PixelVM(data, canvas.width, canvas.height, logEl);
+  logEl.textContent += "Reset.\n";
+});
+</script>
+</body>
+</html>
