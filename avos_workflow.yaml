@@ -1,0 +1,62 @@
+# AVOS Development Workflow
+# This file defines a complete workflow for AVOS development tasks
+
+name: "AVOS Development Workflow"
+
+# Initialize the queue
+setup:
+  - name: "Initialize task queue"
+    type: "shell"
+    command: "python qqueue.py init"
+    priority: 10
+
+# Run all tests
+testing:
+  - name: "Run core tests"
+    type: "avos-pytest"
+    args: ["-v", "tests/"]
+    priority: 5
+    directory: "."
+    
+  - name: "Run visual diff tests"
+    type: "shell"
+    command: "python test_visual_diff.py"
+    priority: 5
+    
+  - name: "Run integration tests"
+    type: "avos-pytest"
+    args: ["-v", "test_pxos_engine_comprehensive.py"]
+    priority: 5
+
+# Build and verify
+build:
+  - name: "Run Infinite Visual Computer demo"
+    type: "avos-demo"
+    demo: "infinite_demo.py"
+    priority: 3
+    delay: 10  # Run after tests
+    
+  - name: "Run Hall of Drift demo"
+    type: "avos-demo"
+    demo: "demo_6pane_workbench.py"
+    priority: 3
+
+# Hardware testing (if available)
+hardware:
+  - name: "Run basic hardware test"
+    type: "avos-hardware-test"
+    test_type: "basic"
+    device: "default"
+    priority: 2
+    
+  - name: "Run comprehensive hardware test"
+    type: "avos-hardware-test"
+    test_type: "comprehensive"
+    device: "default"
+    priority: 1
+
+# Documentation
+documentation:
+  - name: "Build documentation"
+    type: "avos-docs"
+    priority: 1
