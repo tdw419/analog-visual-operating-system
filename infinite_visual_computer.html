@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌌 Infinite Visual Computer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000000;
+            color: #00FF00;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            height: 100vh;
+        }
+        
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            background: #001100;
+            border-right: 2px solid #00FF00;
+        }
+        
+        .control-panel {
+            background: #000000;
+            padding: 20px;
+            border-left: 1px solid #333333;
+            overflow-y: auto;
+        }
+        
+        .header {
+            padding: 15px;
+            background: #002200;
+            border-bottom: 1px solid #00FF00;
+            text-align: center;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #viewport {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            background: #000000;
+        }
+        
+        #viewport:active {
+            cursor: grabbing;
+        }
+        
+        .controls {
+            padding: 10px;
+            background: #001122;
+            border-bottom: 1px solid #333333;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn {
+            background: #003300;
+            color: #00FF00;
+            border: 1px solid #006600;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+        
+        .btn:hover {
+            background: #004400;
+        }
+        
+        .btn:active {
+            background: #006600;
+        }
+        
+        .btn.active {
+            background: #006600;
+            color: #FFFFFF;
+        }
+        
+        .status-bar {
+            padding: 8px 15px;
+            background: #000033;
+            border-top: 1px solid #333333;
+            font-size: 11px;
+            color: #AAAAAA;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .panel-section {
+            margin-bottom: 20px;
+            border: 1px solid #333333;
+            border-radius: 4px;
+            background: #001122;
+        }
+        
+        .panel-header {
+            background: #002244;
+            padding: 10px;
+            color: #00FFFF;
+            font-weight: bold;
+            border-bottom: 1px solid #333333;
+        }
+        
+        .panel-content {
+            padding: 10px;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .input-group {
+            margin: 8px 0;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .input-group label {
+            min-width: 80px;
+            color: #AAAAAA;
+        }
+        
+        .input-group input {
+            background: #001122;
+            color: #00FF00;
+            border: 1px solid #333333;
+            padding: 4px 8px;
+            border-radius: 2px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            flex: 1;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        .stat-item {
+            background: #000033;
+            padding: 8px;
+            border-radius: 3px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            color: #00FFFF;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .stat-label {
+            color: #AAAAAA;
+            font-size: 10px;
+        }
+        
+        .log-container {
+            background: #000011;
+            height: 120px;
+            overflow-y: auto;
+            padding: 8px;
+            font-size: 10px;
+            border: 1px solid #333333;
+            border-radius: 3px;
+        }
+        
+        .log-entry {
+            margin-bottom: 4px;
+            color: #CCCCCC;
+        }
+        
+        .log-entry.info { color: #00AAFF; }
+        .log-entry.success { color: #00FF00; }
+        .log-entry.warning { color: #FFAA00; }
+        .log-entry.error { color: #FF6666; }
+        
+        .coordinates {
+            background: #002200;
+            padding: 5px 10px;
+            border-radius: 3px;
+            color: #FFFF00;
+            font-size: 12px;
+        }
+        
+        .chunk-info {
+            background: #220022;
+            padding: 5px 10px;
+            border-radius: 3px;
+            color: #FF88FF;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Panel -->
+        <div class="main-panel">
+            <div class="header">
+                <h1>🌌 Infinite Visual Computer</h1>
+                <p>Navigate infinite computational space with pan & zoom</p>
+            </div>
+            
+            <div class="controls">
+                <div class="coordinates" id="coordinates">Position: (0, 0)</div>
+                <div class="chunk-info" id="chunk-info">Chunk: (0, 0)</div>
+                
+                <button class="btn" onclick="zoomIn()">Zoom In</button>
+                <button class="btn" onclick="zoomOut()">Zoom Out</button>
+                <button class="btn" onclick="resetView()">Reset View</button>
+                <button class="btn" onclick="advanceFrame()">Advance Frame</button>
+                <button class="btn" id="autoAdvanceBtn" onclick="toggleAutoAdvance()">Auto: OFF</button>
+                
+                <div class="input-group">
+                    <label>Mode:</label>
+                    <select id="computeMode" onchange="changeComputeMode()" style="background: #001122; color: #00FF00; border: 1px solid #333333; font-family: 'Courier New';">
+                        <option value="cellular_automata">Cellular Automata</option>
+                        <option value="neural_network">Neural Network</option>
+                        <option value="logic_gates">Logic Gates</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="canvas-container">
+                <canvas id="viewport" width="800" height="600"></canvas>
+            </div>
+            
+            <div class="status-bar">
+                <span id="connection-status">🔴 Disconnected</span>
+                <span id="performance-info">FPS: -- | Latency: --ms</span>
+                <span id="zoom-info">Zoom: 1.0x</span>
+            </div>
+        </div>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <!-- Statistics -->
+            <div class="panel-section">
+                <div class="panel-header">📊 Statistics</div>
+                <div class="panel-content">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="current-frame">0</div>
+                            <div class="stat-label">Current Frame</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="loaded-chunks">1</div>
+                            <div class="stat-label">Loaded Chunks</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="active-chunks">0</div>
+                            <div class="stat-label">Active Chunks</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="total-pixels">0</div>
+                            <div class="stat-label">Total Pixels</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation -->
+            <div class="panel-section">
+                <div class="panel-header">🧭 Navigation</div>
+                <div class="panel-content">
+                    <div class="input-group">
+                        <label>Go to X:</label>
+                        <input type="number" id="goto-x" value="0" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label>Go to Y:</label>
+                        <input type="number" id="goto-y" value="0" step="1">
+                    </div>
+                    <button class="btn" onclick="jumpToCoordinate()" style="width: 100%; margin-top: 8px;">Jump to Coordinate</button>
+                    
+                    <div style="margin-top: 15px;">
+                        <div style="color: #AAAAAA; margin-bottom: 8px;">Quick Locations:</div>
+                        <button class="btn" onclick="jumpTo(0, 0)" style="width: 100%; margin: 2px 0;">Origin (0, 0)</button>
+                        <button class="btn" onclick="jumpTo(1000, 1000)" style="width: 100%; margin: 2px 0;">Far East (1000, 1000)</button>
+                        <button class="btn" onclick="jumpTo(-500, -500)" style="width: 100%; margin: 2px 0;">Far West (-500, -500)</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Drawing Tools -->
+            <div class="panel-section">
+                <div class="panel-header">🎨 Drawing Tools</div>
+                <div class="panel-content">
+                    <div class="input-group">
+                        <label>Color:</label>
+                        <input type="color" id="draw-color" value="#00ff00" style="width: 50px;">
+                        <input type="text" id="color-hex" value="#00FF00" style="width: 80px;">
+                    </div>
+                    
+                    <div style="margin: 10px 0;">
+                        <button class="btn" id="draw-mode-btn" onclick="toggleDrawMode()">Draw Mode: OFF</button>
+                    </div>
+                    
+                    <div style="color: #AAAAAA; font-size: 10px; margin-top: 10px;">
+                        Click on canvas to draw pixels when draw mode is active.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Advanced Operations -->
+            <div class="panel-section">
+                <div class="panel-header">⚡ Operations</div>
+                <div class="panel-content">
+                    <button class="btn" onclick="runScenario()" style="width: 100%; margin: 4px 0;">Run Demo Scenario</button>
+                    <button class="btn" onclick="createPattern('glider')" style="width: 100%; margin: 4px 0;">Create Glider Pattern</button>
+                    <button class="btn" onclick="createPattern('spiral')" style="width: 100%; margin: 4px 0;">Create Spiral Pattern</button>
+                    <button class="btn" onclick="clearArea()" style="width: 100%; margin: 4px 0;">Clear Visible Area</button>
+                </div>
+            </div>
+            
+            <!-- Activity Log -->
+            <div class="panel-section">
+                <div class="panel-header">📝 Activity Log</div>
+                <div class="panel-content">
+                    <div class="log-container" id="activity-log">
+                        <div class="log-entry info">Infinite Visual Computer initialized</div>
+                        <div class="log-entry info">WebSocket connection pending...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let state = {
+            centerX: 0,
+            centerY: 0,
+            zoom: 1.0,
+            viewWidth: 800,
+            viewHeight: 600,
+            drawMode: false,
+            autoAdvance: false,
+            currentFrame: 0,
+            isConnected: false,
+            isDragging: false,
+            lastMouseX: 0,
+            lastMouseY: 0,
+            stats: {
+                loadedChunks: 1,
+                activeChunks: 0,
+                totalPixels: 0
+            }
+        };
+        
+        // WebSocket connection
+        let ws = null;
+        
+        // Canvas setup
+        const canvas = document.getElementById('viewport');
+        const ctx = canvas.getContext('2d');
+        
+        // Color picker sync
+        document.getElementById('draw-color').addEventListener('change', function() {
+            document.getElementById('color-hex').value = this.value.toUpperCase();
+        });
+        
+        document.getElementById('color-hex').addEventListener('change', function() {
+            document.getElementById('draw-color').value = this.value;
+        });
+        
+        // Initialize
+        function init() {
+            setupCanvas();
+            connectWebSocket();
+            requestViewportUpdate();
+            startPerformanceMonitoring();
+            
+            log('System initialized', 'info');
+        }
+        
+        function setupCanvas() {
+            // Resize canvas to fit container
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                const rect = container.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                state.viewWidth = rect.width;
+                state.viewHeight = rect.height;
+                requestViewportUpdate();
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onMouseWheel);
+            canvas.addEventListener('click', onCanvasClick);
+        }
+        
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket('ws://localhost:8845/ws');
+                
+                ws.onopen = function() {
+                    state.isConnected = true;
+                    updateConnectionStatus('🟢 Connected');
+                    log('WebSocket connected', 'success');
+                    requestViewportUpdate();
+                };
+                
+                ws.onclose = function() {
+                    state.isConnected = false;
+                    updateConnectionStatus('🔴 Disconnected');
+                    log('WebSocket disconnected', 'warning');
+                    
+                    // Auto-reconnect after 3 seconds
+                    setTimeout(connectWebSocket, 3000);
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleWebSocketMessage(data);
+                    } catch (error) {
+                        log(`Message parse error: ${error.message}`, 'error');
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    log(`WebSocket error: ${error}`, 'error');
+                };
+                
+            } catch (error) {
+                log(`Connection error: ${error.message}`, 'error');
+                updateConnectionStatus('🔴 Connection Failed');
+            }
+        }
+        
+        function handleWebSocketMessage(data) {
+            if (data.type === 'ir' && data.ops) {
+                renderUVIROps(data.ops);
+                
+                if (data.stats) {
+                    updateStatistics(data.stats);
+                }
+                
+                if (data.viewport) {
+                    // Update viewport info if provided
+                    updateViewportInfo();
+                }
+            }
+        }
+        
+        function renderUVIROps(ops) {
+            // Clear canvas
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Render each operation
+            ops.forEach(op => {
+                ctx.save();
+                
+                switch (op.op) {
+                    case 'TEXT':
+                        ctx.fillStyle = op.color || '#00FF00';
+                        ctx.font = `${op.size || 12}px 'Courier New'`;
+                        ctx.textAlign = 'left';
+                        ctx.fillText(op.text || '', op.x || 0, op.y || 0);
+                        break;
+                        
+                    case 'RECT':
+                        if (op.fill) {
+                            ctx.fillStyle = op.color || '#FFFFFF';
+                            ctx.fillRect(op.x || 0, op.y || 0, op.w || 1, op.h || 1);
+                        } else {
+                            ctx.strokeStyle = op.color || '#FFFFFF';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(op.x || 0, op.y || 0, op.w || 1, op.h || 1);
+                        }
+                        break;
+                        
+                    case 'BAR':
+                        ctx.fillStyle = op.color || '#00FF00';
+                        ctx.fillRect(op.x || 0, op.y || 0, op.len || 1, 4);
+                        break;
+                }
+                
+                ctx.restore();
+            });
+        }
+        
+        function requestViewportUpdate() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            
+            const message = {
+                type: 'viewport_request',
+                center_x: Math.round(state.centerX),
+                center_y: Math.round(state.centerY),
+                width: Math.round(state.viewWidth / state.zoom),
+                height: Math.round(state.viewHeight / state.zoom),
+                zoom: state.zoom
+            };
+            
+            ws.send(JSON.stringify(message));
+        }
+        
+        // Mouse interaction
+        function onMouseDown(event) {
+            state.isDragging = true;
+            state.lastMouseX = event.clientX;
+            state.lastMouseY = event.clientY;
+            canvas.style.cursor = 'grabbing';
+        }
+        
+        function onMouseMove(event) {
+            if (state.isDragging) {
+                const deltaX = event.clientX - state.lastMouseX;
+                const deltaY = event.clientY - state.lastMouseY;
+                
+                // Pan the view
+                state.centerX -= deltaX / state.zoom;
+                state.centerY -= deltaY / state.zoom;
+                
+                state.lastMouseX = event.clientX;
+                state.lastMouseY = event.clientY;
+                
+                updateViewportInfo();
+                requestViewportUpdate();
+            }
+        }
+        
+        function onMouseUp(event) {
+            state.isDragging = false;
+            canvas.style.cursor = 'grab';
+        }
+        
+        function onMouseWheel(event) {
+            event.preventDefault();
+            
+            const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.max(0.1, Math.min(10.0, state.zoom * zoomFactor));
+            
+            if (newZoom !== state.zoom) {
+                state.zoom = newZoom;
+                updateViewportInfo();
+                requestViewportUpdate();
+            }
+        }
+        
+        function onCanvasClick(event) {
+            if (!state.drawMode) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = event.clientX - rect.left;
+            const canvasY = event.clientY - rect.top;
+            
+            // Convert canvas coordinates to world coordinates
+            const worldX = Math.round(state.centerX + (canvasX - state.viewWidth / 2) / state.zoom);
+            const worldY = Math.round(state.centerY + (canvasY - state.viewHeight / 2) / state.zoom);
+            
+            const color = document.getElementById('color-hex').value;
+            setPixel(worldX, worldY, color);
+        }
+        
+        // API functions
+        async function setPixel(worldX, worldY, color) {
+            try {
+                const response = await fetch('http://localhost:8845/infinite/pixel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        world_x: worldX,
+                        world_y: worldY,
+                        color: color
+                    })
+                });
+                
+                if (response.ok) {
+                    log(`Set pixel at (${worldX}, ${worldY})`, 'success');
+                    requestViewportUpdate();
+                } else {
+                    log(`Failed to set pixel: ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`Pixel set error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function advanceFrame() {
+            try {
+                const response = await fetch('http://localhost:8845/infinite/advance_frame', {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    state.currentFrame = data.current_frame;
+                    document.getElementById('current-frame').textContent = state.currentFrame;
+                    log(`Advanced to frame ${state.currentFrame}`, 'info');
+                    requestViewportUpdate();
+                } else {
+                    log(`Failed to advance frame: ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`Frame advance error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function runScenario() {
+            try {
+                log('Starting demo scenario...', 'info');
+                
+                const eventSource = new EventSource('http://localhost:8845/infinite/scenario');
+                
+                eventSource.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'ir') {
+                            renderUVIROps(data.ops);
+                            state.currentFrame = data.frame;
+                            document.getElementById('current-frame').textContent = state.currentFrame;
+                        }
+                        
+                        if (data.message) {
+                            log(data.message, 'info');
+                        }
+                        
+                        if (data.type === 'scenario_complete') {
+                            eventSource.close();
+                            log('Demo scenario completed', 'success');
+                        }
+                        
+                    } catch (error) {
+                        log(`Scenario event error: ${error.message}`, 'error');
+                    }
+                };
+                
+                eventSource.onerror = function() {
+                    eventSource.close();
+                    log('Scenario stream error', 'error');
+                };
+                
+            } catch (error) {
+                log(`Scenario error: ${error.message}`, 'error');
+            }
+        }
+        
+        // UI controls
+        function zoomIn() {
+            state.zoom = Math.min(10.0, state.zoom * 1.5);
+            updateViewportInfo();
+            requestViewportUpdate();
+        }
+        
+        function zoomOut() {
+            state.zoom = Math.max(0.1, state.zoom / 1.5);
+            updateViewportInfo();
+            requestViewportUpdate();
+        }
+        
+        function resetView() {
+            state.centerX = 0;
+            state.centerY = 0;
+            state.zoom = 1.0;
+            updateViewportInfo();
+            requestViewportUpdate();
+            log('View reset to origin', 'info');
+        }
+        
+        function jumpTo(x, y) {
+            state.centerX = x;
+            state.centerY = y;
+            updateViewportInfo();
+            requestViewportUpdate();
+            log(`Jumped to (${x}, ${y})`, 'info');
+        }
+        
+        function jumpToCoordinate() {
+            const x = parseInt(document.getElementById('goto-x').value) || 0;
+            const y = parseInt(document.getElementById('goto-y').value) || 0;
+            jumpTo(x, y);
+        }
+        
+        function toggleDrawMode() {
+            state.drawMode = !state.drawMode;
+            const btn = document.getElementById('draw-mode-btn');
+            btn.textContent = `Draw Mode: ${state.drawMode ? 'ON' : 'OFF'}`;
+            btn.classList.toggle('active', state.drawMode);
+            
+            canvas.style.cursor = state.drawMode ? 'crosshair' : 'grab';
+            log(`Draw mode ${state.drawMode ? 'enabled' : 'disabled'}`, 'info');
+        }
+        
+        function toggleAutoAdvance() {
+            state.autoAdvance = !state.autoAdvance;
+            const btn = document.getElementById('autoAdvanceBtn');
+            btn.textContent = `Auto: ${state.autoAdvance ? 'ON' : 'OFF'}`;
+            btn.classList.toggle('active', state.autoAdvance);
+            
+            if (state.autoAdvance) {
+                startAutoAdvance();
+            } else {
+                stopAutoAdvance();
+            }
+        }
+        
+        let autoAdvanceInterval = null;
+        
+        function startAutoAdvance() {
+            autoAdvanceInterval = setInterval(advanceFrame, 1000);
+            log('Auto-advance started', 'info');
+        }
+        
+        function stopAutoAdvance() {
+            if (autoAdvanceInterval) {
+                clearInterval(autoAdvanceInterval);
+                autoAdvanceInterval = null;
+            }
+            log('Auto-advance stopped', 'info');
+        }
+        
+        async function createPattern(type) {
+            const centerX = Math.round(state.centerX);
+            const centerY = Math.round(state.centerY);
+            
+            if (type === 'glider') {
+                // Conway's Life glider pattern
+                const glider = [[1,0], [2,1], [0,2], [1,2], [2,2]];
+                for (const [dx, dy] of glider) {
+                    await setPixel(centerX + dx, centerY + dy, '#00FF00');
+                }
+                log('Created glider pattern at center', 'success');
+                
+            } else if (type === 'spiral') {
+                // Spiral pattern
+                const radius = 20;
+                for (let angle = 0; angle < 720; angle += 5) {
+                    const rad = angle * Math.PI / 180;
+                    const r = angle / 720 * radius;
+                    const x = Math.round(centerX + r * Math.cos(rad));
+                    const y = Math.round(centerY + r * Math.sin(rad));
+                    const hue = angle % 360;
+                    const color = `hsl(${hue}, 100%, 50%)`;
+                    await setPixel(x, y, color);
+                }
+                log('Created spiral pattern at center', 'success');
+            }
+            
+            requestViewportUpdate();
+        }
+        
+        function clearArea() {
+            // This would require a server endpoint to clear pixels
+            log('Clear area not yet implemented', 'warning');
+        }
+        
+        function changeComputeMode() {
+            const mode = document.getElementById('computeMode').value;
+            log(`Compute mode changed to: ${mode}`, 'info');
+        }
+        
+        // UI updates
+        function updateViewportInfo() {
+            document.getElementById('coordinates').textContent = 
+                `Position: (${Math.round(state.centerX)}, ${Math.round(state.centerY)})`;
+            
+            const chunkX = Math.floor(state.centerX / 64);
+            const chunkY = Math.floor(state.centerY / 64);
+            document.getElementById('chunk-info').textContent = 
+                `Chunk: (${chunkX}, ${chunkY})`;
+            
+            document.getElementById('zoom-info').textContent = 
+                `Zoom: ${state.zoom.toFixed(1)}x`;
+        }
+        
+        function updateConnectionStatus(status) {
+            document.getElementById('connection-status').textContent = status;
+        }
+        
+        function updateStatistics(stats) {
+            state.stats = stats;
+            document.getElementById('current-frame').textContent = stats.current_frame || 0;
+            document.getElementById('loaded-chunks').textContent = stats.loaded_chunks || 0;
+            document.getElementById('active-chunks').textContent = stats.active_chunks || 0;
+            document.getElementById('total-pixels').textContent = stats.total_memory_cells || 0;
+        }
+        
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('activity-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 50 entries
+            while (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+        
+        // Performance monitoring
+        let lastFrameTime = Date.now();
+        let frameCount = 0;
+        
+        function startPerformanceMonitoring() {
+            setInterval(() => {
+                const now = Date.now();
+                const deltaTime = now - lastFrameTime;
+                const fps = frameCount > 0 ? (1000 / (deltaTime / frameCount)).toFixed(1) : '--';
+                
+                document.getElementById('performance-info').textContent = 
+                    `FPS: ${fps} | Latency: ${deltaTime.toFixed(0)}ms`;
+                
+                lastFrameTime = now;
+                frameCount = 0;
+            }, 1000);
+        }
+        
+        // Start the application
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

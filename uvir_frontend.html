@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UVIR 1.0 - Universal Visual Intermediate Representation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            overflow: hidden;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            height: 100vh;
+        }
+
+        .control-panel {
+            background: #111;
+            border-right: 2px solid #00ff00;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .canvas-container {
+            position: relative;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #ffff00;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ffff00;
+            font-size: 12px;
+        }
+
+        textarea, input, select {
+            width: 100%;
+            background: #222;
+            color: #00ff00;
+            border: 1px solid #333;
+            padding: 8px;
+            border-radius: 3px;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 11px;
+            flex: 1;
+        }
+
+        button:hover {
+            background: #00cc00;
+        }
+
+        button:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .status {
+            background: #222;
+            border: 1px solid #333;
+            padding: 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-bottom: 15px;
+        }
+
+        .status.error {
+            color: #ff0000;
+            border-color: #ff0000;
+        }
+
+        .status.success {
+            color: #00ffff;
+            border-color: #00ffff;
+        }
+
+        .status.info {
+            color: #ffff00;
+            border-color: #ffff00;
+        }
+
+        #uvir-canvas {
+            display: block;
+            background: #000;
+            border: 1px solid #00ff00;
+        }
+
+        .metrics {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(17, 17, 17, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            font-size: 11px;
+            color: #00ffff;
+            min-width: 200px;
+        }
+
+        .metrics .metric {
+            margin: 2px 0;
+        }
+
+        .log-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            height: 120px;
+            background: rgba(17, 17, 17, 0.9);
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 10px;
+        }
+
+        .log-entry {
+            margin: 2px 0;
+            opacity: 0.8;
+        }
+
+        .log-entry.token {
+            color: #00ff00;
+        }
+
+        .log-entry.ir {
+            color: #00ffff;
+        }
+
+        .log-entry.tool {
+            color: #ff00ff;
+        }
+
+        .log-entry.done {
+            color: #ffff00;
+        }
+
+        .log-entry.error {
+            color: #ff0000;
+        }
+
+        .example-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .example-btn {
+            padding: 6px;
+            font-size: 10px;
+            background: #333;
+            color: #00ff00;
+        }
+
+        .example-btn:hover {
+            background: #444;
+        }
+
+        .server-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff0000;
+        }
+
+        .status-indicator.online {
+            background: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="control-panel">
+            <div class="logo">UVIR 1.0<br><small>Universal Visual IR</small></div>
+
+            <div class="server-status">
+                <div class="status-indicator" id="server-indicator"></div>
+                <span id="server-status">Checking server...</span>
+            </div>
+
+            <div class="input-group">
+                <label for="prompt">Visualization Prompt:</label>
+                <textarea id="prompt" placeholder="Describe what you want to visualize...">Set LED on pin 13 to value 128 and show confirmation</textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="server-url">Server URL:</label>
+                <input type="text" id="server-url" value="http://localhost:8844">
+            </div>
+
+            <div class="button-group">
+                <button id="generate-btn" onclick="generateUVIR()">Generate</button>
+                <button id="stop-btn" onclick="stopGeneration()" disabled>Stop</button>
+            </div>
+
+            <div class="button-group">
+                <button onclick="clearCanvas()">Clear</button>
+                <button onclick="exportImage()">Export PNG</button>
+                <button onclick="testHardware()">Test LED</button>
+            </div>
+
+            <div class="example-buttons">
+                <button class="example-btn" onclick="loadExample('flowchart')">Flowchart</button>
+                <button class="example-btn" onclick="loadExample('dashboard')">Dashboard</button>
+                <button class="example-btn" onclick="loadExample('algorithm')">Algorithm</button>
+                <button class="example-btn" onclick="loadExample('hardware')">Hardware</button>
+            </div>
+
+            <div class="status" id="status">Ready to generate UVIR</div>
+
+            <div class="input-group">
+                <label>Settings:</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="margin: 0; font-size: 10px;">Temp:</label>
+                    <input type="range" id="temperature" min="0.1" max="1.5" step="0.1" value="0.7" style="flex: 1;">
+                    <span id="temp-value" style="font-size: 10px;">0.7</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="uvir-canvas"></canvas>
+
+            <div class="metrics" id="metrics">
+                <div class="metric">Status: <span id="status-text">Ready</span></div>
+                <div class="metric">Tokens: <span id="token-count">0</span></div>
+                <div class="metric">Operations: <span id="op-count">0</span></div>
+                <div class="metric">Time: <span id="elapsed-time">0ms</span></div>
+                <div class="metric">TTFP: <span id="ttfp">-</span></div>
+                <div class="metric">Run ID: <span id="run-id">-</span></div>
+            </div>
+
+            <div class="log-panel" id="log-panel">
+                <div class="log-entry">UVIR 1.0 Ready - Universal Visual Intermediate Representation</div>
+                <div class="log-entry">Enter a prompt and click Generate to start</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class UVIRRenderer {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.width = 0;
+                this.height = 0;
+                this.operations = [];
+                this.layers = new Map();
+                this.setupCanvas();
+                this.bindEvents();
+            }
+
+            setupCanvas() {
+                this.resizeCanvas();
+                this.ctx.font = '12px Courier New';
+                this.ctx.textBaseline = 'top';
+                this.clear();
+            }
+
+            bindEvents() {
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                const rect = container.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                
+                this.width = rect.width;
+                this.height = rect.height;
+                
+                this.canvas.width = this.width * dpr;
+                this.canvas.height = this.height * dpr;
+                this.canvas.style.width = this.width + 'px';
+                this.canvas.style.height = this.height + 'px';
+                
+                this.ctx.scale(dpr, dpr);
+                this.ctx.font = '12px Courier New';
+                this.ctx.textBaseline = 'top';
+                
+                this.redraw();
+            }
+
+            clear() {
+                this.ctx.fillStyle = '#000000';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                this.operations = [];
+                this.layers.clear();
+            }
+
+            renderOperation(op) {
+                this.operations.push(op);
+                
+                const layer = op.layer || 0;
+                if (!this.layers.has(layer)) {
+                    this.layers.set(layer, []);
+                }
+                this.layers.get(layer).push(op);
+
+                this.drawOperation(op);
+            }
+
+            renderOperations(ops, batch = false) {
+                if (batch) {
+                    requestAnimationFrame(() => {
+                        ops.forEach(op => this.renderOperation(op));
+                    });
+                } else {
+                    ops.forEach(op => this.renderOperation(op));
+                }
+            }
+
+            drawOperation(op) {
+                switch (op.op) {
+                    case 'TEXT':
+                        this.ctx.fillStyle = op.color || '#00FF00';
+                        if (op.size) {
+                            this.ctx.font = `${op.size}px Courier New`;
+                        }
+                        this.ctx.fillText(op.text || '', op.x || 0, op.y || 0);
+                        break;
+
+                    case 'BAR':
+                        this.ctx.fillStyle = op.color || '#00AA00';
+                        const barHeight = 20;
+                        this.ctx.fillRect(op.x || 0, op.y || 0, op.len || 0, barHeight);
+                        
+                        if (op.label) {
+                            this.ctx.fillStyle = '#FFFFFF';
+                            this.ctx.font = '10px Courier New';
+                            this.ctx.fillText(op.label, op.x || 0, (op.y || 0) + barHeight + 2);
+                        }
+                        break;
+
+                    case 'RECT':
+                        if (op.fill) {
+                            this.ctx.fillStyle = op.color || '#00FF00';
+                            this.ctx.fillRect(op.x || 0, op.y || 0, op.w || 0, op.h || 0);
+                        } else {
+                            this.ctx.strokeStyle = op.color || '#00FF00';
+                            this.ctx.lineWidth = 1;
+                            this.ctx.strokeRect(op.x || 0, op.y || 0, op.w || 0, op.h || 0);
+                        }
+                        break;
+
+                    case 'LINK':
+                        this.ctx.strokeStyle = op.color || '#00FFFF';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(op.x1 || 0, op.y1 || 0);
+                        this.ctx.lineTo(op.x2 || 0, op.y2 || 0);
+                        this.ctx.stroke();
+
+                        if (op.arrow) {
+                            this.drawArrow(op.x1 || 0, op.y1 || 0, op.x2 || 0, op.y2 || 0);
+                        }
+                        break;
+
+                    case 'TICK':
+                        this.ctx.fillStyle = '#00FFFF';
+                        const tickX = (op.t || 0) * 3;
+                        this.ctx.fillRect(tickX, 5, 2, 15);
+                        break;
+                }
+            }
+
+            drawArrow(x1, y1, x2, y2) {
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+                const headlen = 10;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(x2, y2);
+                this.ctx.lineTo(
+                    x2 - headlen * Math.cos(angle - Math.PI / 6),
+                    y2 - headlen * Math.sin(angle - Math.PI / 6)
+                );
+                this.ctx.moveTo(x2, y2);
+                this.ctx.lineTo(
+                    x2 - headlen * Math.cos(angle + Math.PI / 6),
+                    y2 - headlen * Math.sin(angle + Math.PI / 6)
+                );
+                this.ctx.stroke();
+            }
+
+            redraw() {
+                this.clear();
+                const sortedLayers = Array.from(this.layers.keys()).sort((a, b) => a - b);
+                
+                for (const layer of sortedLayers) {
+                    const ops = this.layers.get(layer);
+                    ops.forEach(op => this.drawOperation(op));
+                }
+            }
+
+            exportImage() {
+                return this.canvas.toDataURL('image/png');
+            }
+
+            getOperationCount() {
+                return this.operations.length;
+            }
+        }
+
+        // Global state
+        let renderer;
+        let eventSource = null;
+        let isGenerating = false;
+        let currentRunId = null;
+        let startTime = 0;
+        let tokenCount = 0;
+        let opCount = 0;
+        let firstTokenTime = 0;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderer = new UVIRRenderer('uvir-canvas');
+            checkServerHealth();
+            setupTemperatureSlider();
+        });
+
+        function setupTemperatureSlider() {
+            const slider = document.getElementById('temperature');
+            const display = document.getElementById('temp-value');
+            
+            slider.addEventListener('input', (e) => {
+                display.textContent = e.target.value;
+            });
+        }
+
+        async function checkServerHealth() {
+            const serverUrl = document.getElementById('server-url').value;
+            const indicator = document.getElementById('server-indicator');
+            const status = document.getElementById('server-status');
+            
+            try {
+                const response = await fetch(`${serverUrl}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    indicator.classList.add('online');
+                    status.textContent = `Server Online (${data.mock_mode ? 'Mock' : 'LLM'} Mode)`;
+                    updateStatus('Server connected', 'success');
+                } else {
+                    throw new Error('Server unhealthy');
+                }
+            } catch (error) {
+                indicator.classList.remove('online');
+                status.textContent = 'Server Offline';
+                updateStatus('Server disconnected - check if uvir_server.py is running on port 8844', 'error');
+            }
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        function updateMetrics() {
+            document.getElementById('status-text').textContent = isGenerating ? 'Generating' : 'Ready';
+            document.getElementById('token-count').textContent = tokenCount;
+            document.getElementById('op-count').textContent = opCount;
+            document.getElementById('run-id').textContent = currentRunId || '-';
+            
+            if (startTime > 0) {
+                const elapsed = Date.now() - startTime;
+                document.getElementById('elapsed-time').textContent = `${elapsed}ms`;
+                
+                if (firstTokenTime > 0) {
+                    const ttfp = firstTokenTime - startTime;
+                    document.getElementById('ttfp').textContent = `${ttfp}ms`;
+                }
+            }
+        }
+
+        function logEvent(type, message) {
+            const logPanel = document.getElementById('log-panel');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            logPanel.appendChild(entry);
+            
+            // Keep only last 50 entries
+            while (logPanel.children.length > 50) {
+                logPanel.removeChild(logPanel.firstChild);
+            }
+            
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        async function generateUVIR() {
+            if (isGenerating) return;
+            
+            const prompt = document.getElementById('prompt').value.trim();
+            if (!prompt) {
+                updateStatus('Please enter a prompt', 'error');
+                return;
+            }
+
+            isGenerating = true;
+            startTime = Date.now();
+            tokenCount = 0;
+            opCount = 0;
+            firstTokenTime = 0;
+            currentRunId = null;
+            
+            document.getElementById('generate-btn').disabled = true;
+            document.getElementById('stop-btn').disabled = false;
+            
+            renderer.clear();
+            updateStatus('Connecting to server...', 'info');
+            updateMetrics();
+            
+            const serverUrl = document.getElementById('server-url').value;
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            
+            try {
+                const requestData = {
+                    prompt: prompt,
+                    want_ir: true,
+                    temperature: temperature,
+                    max_tokens: 512
+                };
+
+                const response = await fetch(`${serverUrl}/stream`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                updateStatus('Generating UVIR...', 'info');
+                logEvent('info', `Started generation: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"`);
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n').filter(line => line.trim());
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const event = JSON.parse(line.substring(6));
+                                handleUVIREvent(event);
+                            } catch (e) {
+                                console.warn('Failed to parse SSE data:', e);
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                logEvent('error', `Generation failed: ${error.message}`);
+                console.error('UVIR generation failed:', error);
+            } finally {
+                stopGeneration();
+            }
+        }
+
+        function handleUVIREvent(event) {
+            if (!currentRunId && event.run_id) {
+                currentRunId = event.run_id;
+                updateMetrics();
+            }
+
+            switch (event.type) {
+                case 'token':
+                    tokenCount++;
+                    if (firstTokenTime === 0) {
+                        firstTokenTime = Date.now();
+                    }
+                    logEvent('token', `Token: "${event.text}"`);
+                    updateMetrics();
+                    break;
+
+                case 'ir':
+                case 'ir_summary':
+                    if (event.ops && event.ops.length > 0) {
+                        renderer.renderOperations(event.ops, true);
+                        opCount += event.ops.length;
+                        logEvent('ir', `Rendered ${event.ops.length} operations`);
+                        updateMetrics();
+                    }
+                    break;
+
+                case 'tool_call':
+                    logEvent('tool', `Tool call: ${event.name}(${JSON.stringify(event.args)})`);
+                    // Visual feedback for tool calls
+                    if (event.name === 'serial_pwm') {
+                        renderer.drawOperation({
+                            op: 'TEXT',
+                            x: 50,
+                            y: renderer.height - 100,
+                            text: `Hardware Command: PWM Pin ${event.args.pin} = ${event.args.value}`,
+                            color: '#FF00FF',
+                            size: 14
+                        });
+                    }
+                    break;
+
+                case 'tool_result':
+                    logEvent('tool', `Tool result: ${event.ok ? 'Success' : 'Failed'} - ${JSON.stringify(event.result)}`);
+                    // Visual feedback for tool results
+                    const resultColor = event.ok ? '#00FF00' : '#FF0000';
+                    const resultText = event.ok ? '✓ Hardware Control Success' : '✗ Hardware Control Failed';
+                    renderer.drawOperation({
+                        op: 'TEXT',
+                        x: 50,
+                        y: renderer.height - 80,
+                        text: resultText,
+                        color: resultColor,
+                        size: 12
+                    });
+                    if (event.result.message) {
+                        renderer.drawOperation({
+                            op: 'TEXT',
+                            x: 50,
+                            y: renderer.height - 60,
+                            text: event.result.message,
+                            color: resultColor,
+                            size: 10
+                        });
+                    }
+                    break;
+
+                case 'done':
+                    updateStatus('Generation complete!', 'success');
+                    logEvent('done', `Generation complete. Tokens: ${tokenCount}, Ops: ${opCount}`);
+                    stopGeneration();
+                    break;
+
+                case 'error':
+                    updateStatus(`Error: ${event.error}`, 'error');
+                    logEvent('error', event.error);
+                    stopGeneration();
+                    break;
+
+                default:
+                    console.log('Unknown event type:', event.type);
+            }
+        }
+
+        async function stopGeneration() {
+            if (currentRunId) {
+                try {
+                    const serverUrl = document.getElementById('server-url').value;
+                    await fetch(`${serverUrl}/runs/${currentRunId}/abort`, { method: 'POST' });
+                } catch (e) {
+                    console.warn('Failed to abort run:', e);
+                }
+            }
+            
+            isGenerating = false;
+            document.getElementById('generate-btn').disabled = false;
+            document.getElementById('stop-btn').disabled = true;
+            updateMetrics();
+            
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+        }
+
+        function clearCanvas() {
+            renderer.clear();
+            opCount = 0;
+            updateMetrics();
+            updateStatus('Canvas cleared', 'info');
+            logEvent('info', 'Canvas cleared');
+        }
+
+        function exportImage() {
+            const dataUrl = renderer.exportImage();
+            const link = document.createElement('a');
+            link.download = `uvir-visualization-${Date.now()}.png`;
+            link.href = dataUrl;
+            link.click();
+            updateStatus('Image exported', 'success');
+            logEvent('info', 'Image exported as PNG');
+        }
+
+        function loadExample(type) {
+            const examples = {
+                flowchart: "Create a flowchart showing the process of making coffee, with connected boxes and arrows showing each step from grinding beans to serving",
+                dashboard: "Generate a data dashboard with progress bars showing quarterly sales performance, including bars for Q1-Q4 and key metrics",
+                algorithm: "Visualize the bubble sort algorithm with an array [64, 34, 25, 12, 22, 11, 90] showing the sorting steps with bars and comparisons",
+                hardware: "Set LED on pin 13 to value 200 and display confirmation with visual feedback"
+            };
+            
+            document.getElementById('prompt').value = examples[type] || examples.flowchart;
+            updateStatus(`Loaded ${type} example`, 'info');
+        }
+
+        // Test hardware control manually
+        async function testHardware() {
+            const serverUrl = document.getElementById('server-url').value;
+            const toolCall = {
+                type: "tool_call",
+                run_id: `manual_${Date.now()}`,
+                name: "serial_pwm",
+                args: {pin: 13, value: 128}
+            };
+            
+            try {
+                updateStatus('Testing hardware...', 'info');
+                logEvent('tool', `Manual tool call: ${toolCall.name}`);
+                
+                const response = await fetch(`${serverUrl}/tools/execute`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(toolCall)
+                });
+                
+                const result = await response.json();
+                logEvent('tool', `Manual tool result: ${result.ok ? 'Success' : 'Failed'}`);
+                
+                // Visual feedback
+                const color = result.ok ? '#00FF00' : '#FF0000';
+                const text = result.ok ? '✓ LED Test Success' : '✗ LED Test Failed';
+                
+                renderer.drawOperation({
+                    op: 'RECT',
+                    x: 50,
+                    y: 50,
+                    w: 300,
+                    h: 60,
+                    color: color,
+                    fill: false
+                });
+                
+                renderer.drawOperation({
+                    op: 'TEXT',
+                    x: 60,
+                    y: 70,
+                    text: `Manual Hardware Test: ${text}`,
+                    color: color,
+                    size: 14
+                });
+                
+                if (result.result.message) {
+                    renderer.drawOperation({
+                        op: 'TEXT',
+                        x: 60,
+                        y: 90,
+                        text: result.result.message,
+                        color: color,
+                        size: 10
+                    });
+                }
+                
+                updateStatus(`Hardware test ${result.ok ? 'successful' : 'failed'}`, result.ok ? 'success' : 'error');
+            } catch (error) {
+                logEvent('error', `Hardware test failed: ${error.message}`);
+                updateStatus('Hardware test failed', 'error');
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'Enter':
+                        e.preventDefault();
+                        if (!isGenerating) generateUVIR();
+                        break;
+                    case 'k':
+                        e.preventDefault();
+                        clearCanvas();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        exportImage();
+                        break;
+                    case 'h':
+                        e.preventDefault();
+                        testHardware();
+                        break;
+                }
+            }
+            
+            if (e.key === 'Escape' && isGenerating) {
+                stopGeneration();
+            }
+        });
+
+        // Auto-check server health every 30 seconds
+        setInterval(checkServerHealth, 30000);
+    </script>
+</body>
+</html>

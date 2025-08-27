@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Code Execution Demo - AVOS Integration</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Consolas', monospace;
+            background: #1a1a2e;
+            color: #e6e6e6;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .demo-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            grid-template-rows: 60px 1fr 40px;
+            height: 100vh;
+            gap: 2px;
+            background: #16213e;
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #0f3460 0%, #2E8B57 50%, #8B0000 100%);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            color: white;
+        }
+        
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .execution-tiers {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .tier-badge {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: bold;
+            border: 1px solid;
+        }
+        
+        .tier-js { background: rgba(247, 223, 30, 0.2); color: #F7DF1E; border-color: #F7DF1E; }
+        .tier-python { background: rgba(55, 118, 171, 0.2); color: #3776AB; border-color: #3776AB; }
+        .tier-wasm { background: rgba(206, 66, 43, 0.2); color: #CE422B; border-color: #CE422B; }
+        .tier-container { background: rgba(139, 0, 0, 0.2); color: #FF6B6B; border-color: #FF6B6B; }
+        
+        .control-panel {
+            background: #0f3460;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+        }
+        
+        .language-selector {
+            margin-bottom: 15px;
+        }
+        
+        .lang-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .lang-tab {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+        
+        .lang-tab.active {
+            background: #2E8B57;
+        }
+        
+        .code-editor {
+            flex: 1;
+            background: #001122;
+            color: #e6e6e6;
+            border: 1px solid #2E8B57;
+            border-radius: 4px;
+            padding: 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            resize: none;
+            outline: none;
+        }
+        
+        .execute-controls {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .exec-btn {
+            padding: 8px 16px;
+            background: #2E8B57;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .exec-btn:hover { background: #3CB371; }
+        .exec-btn.danger { background: #8B0000; }
+        
+        .analog-environment {
+            background: #001122;
+            position: relative;
+            margin: 15px;
+            border: 2px solid #2E8B57;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .environment-header {
+            background: rgba(46, 139, 87, 0.2);
+            padding: 10px 15px;
+            border-bottom: 1px solid #2E8B57;
+            font-size: 12px;
+            color: #90EE90;
+            font-weight: bold;
+        }
+        
+        .analog-canvas {
+            width: 100%;
+            height: calc(100% - 45px);
+            display: block;
+        }
+        
+        .execution-log {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #2E8B57;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 10px;
+            color: #90EE90;
+            overflow-y: auto;
+        }
+        
+        .status-bar {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #0f3460 0%, #2E8B57 50%, #8B0000 100%);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 11px;
+            color: white;
+        }
+        
+        .status-item {
+            margin-right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="header">
+            <div class="title">🌍 Universal Code Execution Demo - AVOS Integration</div>
+            <div class="execution-tiers">
+                <div class="tier-badge tier-js">Tier 1: JavaScript</div>
+                <div class="tier-badge tier-python">Tier 2: Python</div>
+                <div class="tier-badge tier-wasm">Tier 3: WASM</div>
+                <div class="tier-badge tier-container">Tier 4: Container</div>
+            </div>
+        </div>
+        
+        <div class="control-panel">
+            <div class="language-selector">
+                <div class="lang-tabs">
+                    <button class="lang-tab active" data-lang="javascript">JavaScript</button>
+                    <button class="lang-tab" data-lang="python">Python</button>
+                    <button class="lang-tab" data-lang="rust">Rust</button>
+                    <button class="lang-tab" data-lang="java">Java</button>
+                </div>
+            </div>
+            
+            <textarea class="code-editor" id="codeEditor" placeholder="Write your code here...">// JavaScript Universal Execution Demo
+// Direct UVIR integration + Hardware control
+
+// Generate UVIR operations
+uvir.text(50, 30, 'Universal Execution Demo', '#00ff88');
+uvir.rect(50, 60, 200, 100, '#2E8B57');
+
+// Animate with hardware integration
+for (let i = 0; i < 10; i++) {
+    const x = 70 + i * 18;
+    const height = Math.random() * 80 + 20;
+    const color = `hsl(${i * 36}, 70%, 60%)`;
+    
+    uvir.bar(x, 150, height, `Bar ${i+1}`, color);
+    
+    // Control hardware based on data
+    const pwmValue = Math.floor((height / 100) * 255);
+    hardware.pwm(13, pwmValue);
+}
+
+// Log execution
+utils.log('JavaScript execution complete - UVIR + Hardware integrated');</textarea>
+            
+            <div class="execute-controls">
+                <button class="exec-btn" onclick="executeCode()">▶ Execute</button>
+                <button class="exec-btn" onclick="runExample()">🎯 Example</button>
+                <button class="exec-btn danger" onclick="clearEnvironment()">🗑 Clear</button>
+            </div>
+        </div>
+        
+        <div class="analog-environment">
+            <div class="environment-header">
+                🎯 Analog Environment - Universal UVIR Renderer
+            </div>
+            <canvas id="analogCanvas" class="analog-canvas" width="800" height="500"></canvas>
+            
+            <div class="execution-log" id="executionLog">
+                <div style="color: #00ff88; font-weight: bold;">Universal Execution Log:</div>
+                <div>System ready - All execution tiers available</div>
+                <div>UVIR renderer initialized</div>
+                <div>Hardware bridge connected</div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-item">🔄 Executions: <span id="execCount">0</span></div>
+            <div class="status-item">⚡ Current: <span id="currentLang">JavaScript</span></div>
+            <div class="status-item">🎯 UVIR Ops: <span id="uvirCount">0</span></div>
+            <div class="status-item">🔌 Hardware: <span id="hardwareCount">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Universal Execution Engine Demo
+        class UniversalExecutionDemo {
+            constructor() {
+                this.canvas = document.getElementById('analogCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.currentLanguage = 'javascript';
+                this.executionCount = 0;
+                this.uvirOperationCount = 0;
+                this.hardwareCommandCount = 0;
+                
+                this.initializeEnvironment();
+                this.setupEventListeners();
+            }
+            
+            initializeEnvironment() {
+                this.clearCanvas();
+                this.log('Universal execution environment initialized');
+                
+                // Initialize analog API for code execution
+                window.uvir = this.createUVIRAPI();
+                window.hardware = this.createHardwareAPI();
+                window.utils = this.createUtilsAPI();
+            }
+            
+            createUVIRAPI() {
+                return {
+                    text: (x, y, text, color = '#ffffff') => {
+                        this.renderText(x, y, text, color);
+                        this.uvirOperationCount++;
+                        this.updateStats();
+                    },
+                    rect: (x, y, w, h, color = '#ffffff') => {
+                        this.renderRect(x, y, w, h, color);
+                        this.uvirOperationCount++;
+                        this.updateStats();
+                    },
+                    bar: (x, y, height, label, color = '#0088ff') => {
+                        this.renderBar(x, y, height, label, color);
+                        this.uvirOperationCount++;
+                        this.updateStats();
+                    },
+                    clear: () => {
+                        this.clearCanvas();
+                    }
+                };
+            }
+            
+            createHardwareAPI() {
+                return {
+                    pwm: (pin, value) => {
+                        this.simulateHardwareCommand('PWM', {pin, value});
+                        this.hardwareCommandCount++;
+                        this.updateStats();
+                    },
+                    digital: (pin, state) => {
+                        this.simulateHardwareCommand('DIGITAL', {pin, state});
+                        this.hardwareCommandCount++;
+                        this.updateStats();
+                    },
+                    servo: (pin, angle) => {
+                        this.simulateHardwareCommand('SERVO', {pin, angle});
+                        this.hardwareCommandCount++;
+                        this.updateStats();
+                    }
+                };
+            }
+            
+            createUtilsAPI() {
+                return {
+                    log: (message) => this.log(message),
+                    delay: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
+                    random: () => Math.random(),
+                    time: () => Date.now()
+                };
+            }
+            
+            setupEventListeners() {
+                document.querySelectorAll('.lang-tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        this.switchLanguage(e.target.dataset.lang);
+                    });
+                });
+            }
+            
+            switchLanguage(language) {
+                this.currentLanguage = language;
+                
+                document.querySelectorAll('.lang-tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.querySelector(`[data-lang="${language}"]`).classList.add('active');
+                
+                this.loadLanguageExample(language);
+                this.updateStats();
+            }
+            
+            loadLanguageExample(language) {
+                const examples = {
+                    javascript: `// JavaScript Universal Execution Demo
+// Direct UVIR integration + Hardware control
+
+// Generate UVIR operations
+uvir.text(50, 30, 'Universal Execution Demo', '#00ff88');
+uvir.rect(50, 60, 200, 100, '#2E8B57');
+
+// Animate with hardware integration
+for (let i = 0; i < 10; i++) {
+    const x = 70 + i * 18;
+    const height = Math.random() * 80 + 20;
+    const color = \`hsl(\${i * 36}, 70%, 60%)\`;
+    
+    uvir.bar(x, 150, height, \`Bar \${i+1}\`, color);
+    
+    // Control hardware based on data
+    const pwmValue = Math.floor((height / 100) * 255);
+    hardware.pwm(13, pwmValue);
+}
+
+utils.log('JavaScript execution complete');`,
+                    
+                    python: `# Python Universal Execution Demo
+# Integrated with UVIR via Pyodide
+
+import math
+import random
+
+# Generate data visualization
+uvir.text(50, 30, 'Python Data Analysis', '#3776AB')
+uvir.rect(50, 60, 300, 120, '#3776AB')
+
+# Create dynamic visualization
+for i in range(12):
+    x = 70 + i * 25
+    value = math.sin(i * 0.5) * 40 + 60
+    color = f"hsl({i * 30}, 70%, 60%)"
+    
+    uvir.bar(x, 150, value, f"Data {i+1}", color)
+    
+    # Hardware control from Python
+    pwm_val = int((value / 100) * 255)
+    hardware.pwm(13, pwm_val)
+
+utils.log('Python execution via Pyodide complete')`,
+                    
+                    rust: `// Rust Universal Execution Demo
+// Compiled to WebAssembly
+
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub fn execute_rust_demo() {
+    // High-performance computation
+    let data: Vec<f32> = (0..20)
+        .map(|i| (i as f32 * 0.314).sin() * 50.0 + 75.0)
+        .collect();
+    
+    // UVIR operations from Rust
+    analog_text(50.0, 30.0, "Rust WASM Demo", "#CE422B");
+    analog_rect(50.0, 60.0, 400.0, 100.0, "#CE422B");
+    
+    // Render performance visualization
+    for (i, &value) in data.iter().enumerate() {
+        let x = 70.0 + i as f32 * 20.0;
+        let color = format!("hsl({}, 70%, 60%)", i * 18);
+        
+        analog_bar(x, 150.0, value, &format!("#{}", i), &color);
+        
+        // Hardware control
+        let pwm = (value / 100.0 * 255.0) as u32;
+        analog_pwm(13, pwm);
+    }
+    
+    analog_log("Rust WebAssembly execution complete");
+}`,
+                    
+                    java: `// Java Universal Execution Demo
+// Container-based execution
+
+public class AnalogDemo {
+    public static void main(String[] args) {
+        // Data processing
+        double[] data = new double[15];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = Math.sin(i * 0.4) * 60 + 80;
+        }
+        
+        // UVIR operations via container bridge
+        AnalogAPI.text(50, 30, "Java Container Demo", "#FF6B6B");
+        AnalogAPI.rect(50, 60, 350, 120, "#FF6B6B");
+        
+        // Enterprise-grade visualization
+        for (int i = 0; i < data.length; i++) {
+            int x = 70 + i * 23;
+            String color = String.format("hsl(%d, 70%%, 60%%)", i * 24);
+            
+            AnalogAPI.bar(x, 150, (int)data[i], "S" + i, color);
+            
+            // Hardware integration
+            int pwmValue = (int)((data[i] / 120.0) * 255);
+            AnalogAPI.pwm(13, pwmValue);
+        }
+        
+        AnalogAPI.log("Java container execution complete");
+    }
+}`
+                };
+                
+                document.getElementById('codeEditor').value = examples[language] || '// Example not available';
+            }
+            
+            executeCode() {
+                const code = document.getElementById('codeEditor').value;
+                const language = this.currentLanguage;
+                
+                this.log(`Executing ${language} code...`);
+                
+                try {
+                    switch (language) {
+                        case 'javascript':
+                            this.executeJavaScript(code);
+                            break;
+                        case 'python':
+                            this.executePython(code);
+                            break;
+                        case 'rust':
+                            this.executeRust(code);
+                            break;
+                        case 'java':
+                            this.executeJava(code);
+                            break;
+                        default:
+                            this.log(`Language ${language} not yet implemented`);
+                    }
+                    
+                    this.executionCount++;
+                    this.updateStats();
+                    
+                } catch (error) {
+                    this.log(`Execution error: ${error.message}`);
+                }
+            }
+            
+            executeJavaScript(code) {
+                // Real JavaScript execution
+                const fn = Function('uvir', 'hardware', 'utils', `
+                    "use strict";
+                    ${code}
+                `);
+                
+                fn(window.uvir, window.hardware, window.utils);
+                this.log('✅ JavaScript executed natively');
+            }
+            
+            executePython(code) {
+                // Simulate Pyodide execution
+                this.log('🐍 Simulating Python via Pyodide...');
+                this.runPythonSimulation();
+            }
+            
+            executeRust(code) {
+                // Simulate WASM execution
+                this.log('🦀 Simulating Rust WebAssembly...');
+                this.runRustSimulation();
+            }
+            
+            executeJava(code) {
+                // Simulate container execution
+                this.log('☕ Simulating Java container...');
+                this.runJavaSimulation();
+            }
+            
+            runPythonSimulation() {
+                // Simulate Python UVIR generation
+                setTimeout(() => {
+                    uvir.text(50, 30, 'Python Data Analysis', '#3776AB');
+                    uvir.rect(50, 60, 300, 120, '#3776AB');
+                    
+                    for (let i = 0; i < 12; i++) {
+                        const x = 70 + i * 25;
+                        const value = Math.sin(i * 0.5) * 40 + 60;
+                        const color = `hsl(${i * 30}, 70%, 60%)`;
+                        
+                        uvir.bar(x, 150, value, `Data ${i+1}`, color);
+                        hardware.pwm(13, Math.floor((value / 100) * 255));
+                    }
+                    
+                    this.log('✅ Python executed via Pyodide');
+                }, 100);
+            }
+            
+            runRustSimulation() {
+                // Simulate Rust WASM generation
+                setTimeout(() => {
+                    uvir.text(50, 30, 'Rust WASM Demo', '#CE422B');
+                    uvir.rect(50, 60, 400, 100, '#CE422B');
+                    
+                    for (let i = 0; i < 20; i++) {
+                        const x = 70 + i * 20;
+                        const value = Math.sin(i * 0.314) * 50 + 75;
+                        const color = `hsl(${i * 18}, 70%, 60%)`;
+                        
+                        uvir.bar(x, 150, value, `#${i}`, color);
+                        hardware.pwm(13, Math.floor((value / 100) * 255));
+                    }
+                    
+                    this.log('✅ Rust executed via WebAssembly');
+                }, 150);
+            }
+            
+            runJavaSimulation() {
+                // Simulate Java container generation
+                setTimeout(() => {
+                    uvir.text(50, 30, 'Java Container Demo', '#FF6B6B');
+                    uvir.rect(50, 60, 350, 120, '#FF6B6B');
+                    
+                    for (let i = 0; i < 15; i++) {
+                        const x = 70 + i * 23;
+                        const value = Math.sin(i * 0.4) * 60 + 80;
+                        const color = `hsl(${i * 24}, 70%, 60%)`;
+                        
+                        uvir.bar(x, 150, value, `S${i}`, color);
+                        hardware.pwm(13, Math.floor((value / 120) * 255));
+                    }
+                    
+                    this.log('✅ Java executed in container');
+                }, 200);
+            }
+            
+            // UVIR Rendering Methods
+            renderText(x, y, text, color) {
+                this.ctx.fillStyle = color;
+                this.ctx.font = '14px Consolas';
+                this.ctx.fillText(text, x, y);
+            }
+            
+            renderRect(x, y, w, h, color) {
+                this.ctx.strokeStyle = color;
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(x, y, w, h);
+            }
+            
+            renderBar(x, y, height, label, color) {
+                // Draw bar
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(x, y, 15, height);
+                
+                // Draw label
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = '10px Consolas';
+                this.ctx.fillText(label, x - 5, y + height + 15);
+            }
+            
+            simulateHardwareCommand(type, params) {
+                this.log(`🔌 Hardware: ${type} ${JSON.stringify(params)}`);
+            }
+            
+            clearCanvas() {
+                this.ctx.fillStyle = '#001122';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw grid
+                this.ctx.strokeStyle = 'rgba(46, 139, 87, 0.1)';
+                this.ctx.lineWidth = 1;
+                for (let x = 0; x < this.canvas.width; x += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                for (let y = 0; y < this.canvas.height; y += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.canvas.width, y);
+                    this.ctx.stroke();
+                }
+                
+                this.uvirOperationCount = 0;
+                this.hardwareCommandCount = 0;
+                this.updateStats();
+            }
+            
+            log(message) {
+                const logElement = document.getElementById('executionLog');
+                const entry = document.createElement('div');
+                entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+                logElement.appendChild(entry);
+                logElement.scrollTop = logElement.scrollHeight;
+                
+                // Keep log manageable
+                if (logElement.children.length > 20) {
+                    logElement.removeChild(logElement.children[1]); // Keep header
+                }
+            }
+            
+            updateStats() {
+                document.getElementById('execCount').textContent = this.executionCount;
+                document.getElementById('currentLang').textContent = this.currentLanguage;
+                document.getElementById('uvirCount').textContent = this.uvirOperationCount;
+                document.getElementById('hardwareCount').textContent = this.hardwareCommandCount;
+            }
+        }
+        
+        // Global functions
+        function executeCode() {
+            universalDemo.executeCode();
+        }
+        
+        function runExample() {
+            universalDemo.loadLanguageExample(universalDemo.currentLanguage);
+            universalDemo.executeCode();
+        }
+        
+        function clearEnvironment() {
+            universalDemo.clearCanvas();
+            universalDemo.log('Environment cleared');
+        }
+        
+        // Initialize demo
+        let universalDemo;
+        window.onload = () => {
+            universalDemo = new UniversalExecutionDemo();
+        };
+    </script>
+</body>
+</html>

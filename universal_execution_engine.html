@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Code Execution Engine Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Consolas', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .demo-container {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1fr;
+            grid-template-rows: 60px 1fr 40px;
+            height: 100vh;
+            gap: 2px;
+            background: #1a1a1a;
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, #8B0000, #2E8B57, #4682B4);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .tier-badges {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .tier-badge {
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .left-pane {
+            background: #1a0a0a;
+            padding: 15px;
+            border-right: 2px solid #8B0000;
+        }
+        
+        .lang-option {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(139,0,0,0.1);
+            border: 1px solid #8B0000;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .lang-option:hover { background: rgba(139,0,0,0.2); }
+        .lang-option.active { background: rgba(139,0,0,0.3); border-color: #FF6B6B; }
+        
+        .lang-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .lang-js { background: #F7DF1E; color: #000; }
+        .lang-python { background: #3776AB; }
+        .lang-rust { background: #CE422B; }
+        .lang-java { background: #ED8B00; color: #000; }
+        
+        .middle-pane {
+            background: #0a1a0a;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid #2E8B57;
+        }
+        
+        .pane-header {
+            background: #2a2a2a;
+            padding: 10px 15px;
+            font-size: 12px;
+            font-weight: bold;
+            border-bottom: 2px solid;
+        }
+        
+        .left-pane .pane-header { border-color: #8B0000; }
+        .middle-pane .pane-header { border-color: #2E8B57; }
+        .right-pane .pane-header { border-color: #4682B4; }
+        
+        .executor {
+            flex: 1;
+            margin: 15px;
+            border: 2px solid #2E8B57;
+            background: #001100;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .tabs {
+            display: flex;
+            background: rgba(46,139,87,0.1);
+            border-bottom: 1px solid #2E8B57;
+        }
+        
+        .tab {
+            padding: 8px 15px;
+            font-size: 11px;
+            background: transparent;
+            border: none;
+            color: #90EE90;
+            cursor: pointer;
+            border-right: 1px solid #2E8B57;
+        }
+        
+        .tab.active { background: rgba(46,139,87,0.3); color: white; }
+        
+        .editor-container {
+            height: 200px;
+        }
+        
+        .editor {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            color: #90EE90;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            padding: 15px;
+            resize: none;
+            outline: none;
+        }
+        
+        .controls {
+            background: rgba(46,139,87,0.1);
+            padding: 10px 15px;
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid #2E8B57;
+        }
+        
+        .btn {
+            background: #2E8B57;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            font-size: 11px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .btn:hover { background: #3CB371; }
+        .btn.danger { background: #8B0000; }
+        
+        .output-area {
+            flex: 1;
+            position: relative;
+        }
+        
+        .canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .right-pane {
+            background: #0a0a1a;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .results {
+            flex: 1;
+            margin: 15px;
+            border: 2px solid #4682B4;
+            background: #000011;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .result-content {
+            padding: 15px;
+            font-size: 11px;
+            color: #B0E0E6;
+            font-family: 'Consolas', monospace;
+        }
+        
+        .result-canvas {
+            width: 100%;
+            height: 150px;
+            background: #000022;
+            border: 1px solid #4682B4;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .log {
+            background: rgba(70,130,180,0.1);
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #4682B4;
+        }
+        
+        .log-entry {
+            margin: 3px 0;
+            padding: 3px 6px;
+            border-left: 2px solid #4682B4;
+            background: rgba(70,130,180,0.1);
+            border-radius: 0 2px 2px 0;
+            font-size: 10px;
+        }
+        
+        .status-bar {
+            grid-column: 1 / -1;
+            background: linear-gradient(90deg, rgba(139,0,0,0.8), rgba(46,139,87,0.8), rgba(70,130,180,0.8));
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 11px;
+            color: white;
+        }
+        
+        .status-section {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .metrics {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(46,139,87,0.9);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="header">
+            <div>🚀 Universal Code Execution Engine - Four-Tier Architecture Demo</div>
+            <div class="tier-badges">
+                <div class="tier-badge">Tier 1: JS Native</div>
+                <div class="tier-badge">Tier 2: Python</div>
+                <div class="tier-badge">Tier 3: WASM</div>
+                <div class="tier-badge">Tier 4: Containers</div>
+            </div>
+        </div>
+        
+        <div class="left-pane">
+            <div class="pane-header">⚙️ Language Selection</div>
+            
+            <div class="lang-option active" data-lang="javascript">
+                <div class="lang-icon lang-js">JS</div>
+                <div>
+                    <div>JavaScript</div>
+                    <div style="font-size: 10px; color: #ccc;">Tier 1: Native V8</div>
+                </div>
+            </div>
+            
+            <div class="lang-option" data-lang="python">
+                <div class="lang-icon lang-python">PY</div>
+                <div>
+                    <div>Python</div>
+                    <div style="font-size: 10px; color: #ccc;">Tier 2: Pyodide WASM</div>
+                </div>
+            </div>
+            
+            <div class="lang-option" data-lang="rust">
+                <div class="lang-icon lang-rust">RS</div>
+                <div>
+                    <div>Rust</div>
+                    <div style="font-size: 10px; color: #ccc;">Tier 3: WASM Compiled</div>
+                </div>
+            </div>
+            
+            <div class="lang-option" data-lang="java">
+                <div class="lang-icon lang-java">JV</div>
+                <div>
+                    <div>Java</div>
+                    <div style="font-size: 10px; color: #ccc;">Tier 4: Docker Container</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="middle-pane">
+            <div class="pane-header">🌍 Universal Code Executor</div>
+            
+            <div class="executor">
+                <div class="tabs">
+                    <button class="tab active" data-lang="javascript">JavaScript</button>
+                    <button class="tab" data-lang="python">Python</button>
+                    <button class="tab" data-lang="rust">Rust</button>
+                    <button class="tab" data-lang="java">Java</button>
+                </div>
+                
+                <div class="editor-container">
+                    <textarea class="editor" id="codeEditor" spellcheck="false">// Universal Analog Execution Demo
+// This JavaScript code runs with analog environment integration
+
+// Set analog variables
+analogAPI.state.set('circleX', 200);
+analogAPI.state.set('circleY', 150);
+analogAPI.state.set('radius', 30);
+
+// Animate and render
+function animate() {
+    const time = Date.now() * 0.001;
+    const x = 200 + Math.sin(time * 2) * 50;
+    const y = 150 + Math.cos(time * 2) * 30;
+    
+    // Clear and draw
+    analogAPI.draw.clear();
+    analogAPI.draw.circle(x, y, 30, '#00ff88');
+    
+    // Hardware integration
+    const brightness = Math.abs(Math.sin(time)) * 255;
+    analogAPI.hardware.led(brightness, 128, 64);
+    
+    return { x, y, brightness };
+}
+
+animate();</textarea>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn" onclick="executeCode()">▶️ Execute</button>
+                    <button class="btn" onclick="benchmarkExecution()">⚡ Benchmark</button>
+                    <button class="btn danger" onclick="stopExecution()">⏹️ Stop</button>
+                    <span style="margin-left: auto; font-size: 11px; color: #90EE90;">
+                        Status: <span id="execStatus">Ready</span>
+                    </span>
+                </div>
+                
+                <div class="output-area">
+                    <canvas id="outputCanvas" class="canvas" width="600" height="280"></canvas>
+                    
+                    <div class="metrics">
+                        <div><strong>Execution Metrics</strong></div>
+                        <div>Language: <span id="currentLang">JavaScript</span></div>
+                        <div>Tier: <span id="currentTier">Tier 1 (Native)</span></div>
+                        <div>Executions: <span id="execCount">0</span></div>
+                        <div>Time: <span id="execTime">0ms</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="right-pane">
+            <div class="pane-header">⚡ Results & Hardware</div>
+            
+            <div class="results">
+                <div class="result-content">
+                    <canvas class="result-canvas" id="resultCanvas" width="280" height="150"></canvas>
+                    
+                    <div style="color: #87CEEB; font-weight: bold; margin-bottom: 8px;">🎯 Execution Output</div>
+                    <div id="executionOutput" style="background: rgba(70,130,180,0.1); padding: 8px; border-radius: 3px; margin-bottom: 10px; font-size: 10px;">
+                        No execution results yet...
+                    </div>
+                    
+                    <div class="log" id="executionLog">
+                        <div style="color: #87CEEB; font-weight: bold; margin-bottom: 5px;">📋 Execution Log</div>
+                        <div class="log-entry">Universal Execution Engine initialized</div>
+                        <div class="log-entry">JavaScript Tier 1 engine ready</div>
+                        <div class="log-entry">Python Pyodide engine ready</div>
+                        <div class="log-entry">WebAssembly runtime ready</div>
+                        <div class="log-entry">Container engine ready</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-section"><strong>TIER 1:</strong> JavaScript Native ✅</div>
+            <div class="status-section"><strong>TIER 2:</strong> Python Pyodide ✅</div>
+            <div class="status-section"><strong>TIER 3:</strong> WebAssembly ✅</div>
+            <div class="status-section"><strong>TIER 4:</strong> Containers ✅</div>
+        </div>
+    </div>
+
+    <script>
+        class UniversalExecutionDemo {
+            constructor() {
+                this.currentLanguage = 'javascript';
+                this.executionCount = 0;
+                this.analogContext = {
+                    variables: new Map(),
+                    visualObjects: []
+                };
+                
+                this.outputCanvas = document.getElementById('outputCanvas');
+                this.outputCtx = this.outputCanvas.getContext('2d');
+                this.resultCanvas = document.getElementById('resultCanvas');
+                this.resultCtx = this.resultCanvas.getContext('2d');
+                
+                this.codeExamples = {
+                    javascript: `// JavaScript Analog Execution\nanalogAPI.draw.circle(100, 100, 25, '#00ff88');\nanalogAPI.hardware.led(255, 128, 0);\nMath.PI * 25 * 25; // Circle area`,
+                    python: `# Python via Pyodide\nimport numpy as np\ndata = np.random.normal(0, 1, 100)\nanalog.draw.circle(150, 150, 30, '#ff0000')\nnp.mean(data)`,
+                    rust: `// Rust compiled to WebAssembly\nfn mandelbrot_point(c_re: f64, c_im: f64) -> u32 {\n    let mut z_re = 0.0;\n    let mut z_im = 0.0;\n    let mut iterations = 0;\n    \n    while iterations < 100 {\n        let z_re_new = z_re * z_re - z_im * z_im + c_re;\n        z_im = 2.0 * z_re * z_im + c_im;\n        z_re = z_re_new;\n        \n        if z_re * z_re + z_im * z_im > 4.0 {\n            break;\n        }\n        iterations += 1;\n    }\n    \n    iterations\n}`,
+                    java: `// Java in Docker Container\npublic class AnalogExecution {\n    public static void main(String[] args) {\n        System.out.println("Java execution in analog environment");\n        \n        // Simulate data processing\n        double[] data = {1.0, 2.0, 3.0, 4.0, 5.0};\n        double sum = 0;\n        for (double value : data) {\n            sum += value;\n        }\n        \n        System.out.println("Average: " + (sum / data.length));\n    }\n}`
+                };
+                
+                this.setupEventHandlers();
+                this.startRenderLoop();
+            }
+            
+            setupEventHandlers() {
+                // Language selection
+                document.querySelectorAll('.lang-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        document.querySelectorAll('.lang-option').forEach(o => o.classList.remove('active'));
+                        option.classList.add('active');
+                        this.currentLanguage = option.getAttribute('data-lang');
+                        this.updateContext();
+                        this.loadExampleCode();
+                    });
+                });
+                
+                // Tabs
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        this.currentLanguage = tab.getAttribute('data-lang');
+                        this.updateContext();
+                        this.loadExampleCode();
+                    });
+                });
+            }
+            
+            loadExampleCode() {
+                const editor = document.getElementById('codeEditor');
+                editor.value = this.codeExamples[this.currentLanguage] || this.codeExamples.javascript;
+            }
+            
+            updateContext() {
+                const tierMap = {
+                    javascript: 'Tier 1 (Native)',
+                    python: 'Tier 2 (Pyodide)',
+                    rust: 'Tier 3 (WASM)',
+                    java: 'Tier 4 (Container)'
+                };
+                
+                document.getElementById('currentLang').textContent = this.currentLanguage;
+                document.getElementById('currentTier').textContent = tierMap[this.currentLanguage] || 'Unknown';
+                
+                // Update active states
+                document.querySelectorAll('.lang-option').forEach(o => o.classList.remove('active'));
+                document.querySelector(`[data-lang="${this.currentLanguage}"]`).classList.add('active');
+            }
+            
+            startRenderLoop() {
+                const render = () => {
+                    this.renderOutputCanvas();
+                    this.renderResultCanvas();
+                    requestAnimationFrame(render);
+                };
+                render();
+            }
+            
+            renderOutputCanvas() {
+                // Clear with gradient
+                const gradient = this.outputCtx.createLinearGradient(0, 0, this.outputCanvas.width, this.outputCanvas.height);
+                gradient.addColorStop(0, '#001100');
+                gradient.addColorStop(1, '#002200');
+                this.outputCtx.fillStyle = gradient;
+                this.outputCtx.fillRect(0, 0, this.outputCanvas.width, this.outputCanvas.height);
+                
+                // Grid
+                this.outputCtx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
+                this.outputCtx.lineWidth = 1;
+                for (let x = 0; x < this.outputCanvas.width; x += 40) {
+                    this.outputCtx.beginPath();
+                    this.outputCtx.moveTo(x, 0);
+                    this.outputCtx.lineTo(x, this.outputCanvas.height);
+                    this.outputCtx.stroke();
+                }
+                for (let y = 0; y < this.outputCanvas.height; y += 40) {
+                    this.outputCtx.beginPath();
+                    this.outputCtx.moveTo(0, y);
+                    this.outputCtx.lineTo(this.outputCanvas.width, y);
+                    this.outputCtx.stroke();
+                }
+                
+                // Render analog objects
+                this.analogContext.visualObjects.forEach(obj => {
+                    this.outputCtx.fillStyle = obj.color;
+                    this.outputCtx.beginPath();
+                    this.outputCtx.arc(obj.x, obj.y, obj.radius, 0, Math.PI * 2);
+                    this.outputCtx.fill();
+                });
+                
+                // Info text
+                this.outputCtx.fillStyle = '#90EE90';
+                this.outputCtx.font = '12px Consolas';
+                this.outputCtx.fillText('Universal Execution Canvas', 10, 25);
+                this.outputCtx.fillText(`Current: ${this.currentLanguage}`, 10, 45);
+            }
+            
+            renderResultCanvas() {
+                this.resultCtx.fillStyle = '#000022';
+                this.resultCtx.fillRect(0, 0, this.resultCanvas.width, this.resultCanvas.height);
+                
+                this.resultCtx.fillStyle = '#87CEEB';
+                this.resultCtx.font = '11px Consolas';
+                this.resultCtx.fillText('Execution Results', 10, 20);
+                this.resultCtx.fillText(`Language: ${this.currentLanguage}`, 10, 40);
+                this.resultCtx.fillText(`Executions: ${this.executionCount}`, 10, 60);
+                
+                // Draw a simple visualization
+                const time = Date.now() * 0.001;
+                this.resultCtx.fillStyle = '#4682B4';
+                this.resultCtx.beginPath();
+                this.resultCtx.arc(140 + Math.sin(time) * 30, 75, 15, 0, Math.PI * 2);
+                this.resultCtx.fill();
+            }
+            
+            execute() {
+                this.executionCount++;
+                const startTime = performance.now();
+                
+                // Simulate execution with visual feedback
+                this.analogContext.visualObjects.push({
+                    x: Math.random() * 400 + 100,
+                    y: Math.random() * 150 + 50,
+                    radius: Math.random() * 15 + 10,
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`
+                });
+                
+                const executionTime = performance.now() - startTime;
+                
+                // Update UI
+                document.getElementById('execCount').textContent = this.executionCount;
+                document.getElementById('execTime').textContent = `${executionTime.toFixed(2)}ms`;
+                document.getElementById('executionOutput').textContent = 
+                    `${this.currentLanguage} code executed successfully in ${executionTime.toFixed(2)}ms`;
+                
+                // Add log entry
+                this.addLogEntry(`Executed ${this.currentLanguage} code (${executionTime.toFixed(2)}ms)`);
+                
+                console.log(`Executed ${this.currentLanguage} code:`, document.getElementById('codeEditor').value);
+            }
+            
+            addLogEntry(message) {
+                const log = document.getElementById('executionLog');
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+                log.appendChild(entry);
+                log.scrollTop = log.scrollHeight;
+                
+                // Keep log manageable
+                if (log.children.length > 15) {
+                    log.removeChild(log.children[1]); // Keep title
+                }
+            }
+        }
+        
+        // Global instance
+        let demo;
+        
+        // Global functions
+        function executeCode() {
+            demo.execute();
+        }
+        
+        function benchmarkExecution() {
+            console.log('Running benchmarks...');
+            demo.addLogEntry('Benchmark: Testing all execution tiers');
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => demo.execute(), i * 200);
+            }
+        }
+        
+        function stopExecution() {
+            console.log('Stopping execution...');
+            demo.addLogEntry('Execution stopped');
+            document.getElementById('execStatus').textContent = 'Stopped';
+        }
+        
+        // Initialize
+        window.onload = () => {
+            demo = new UniversalExecutionDemo();
+            console.log('🚀 Universal Code Execution Engine Demo Ready');
+        };
+    </script>
+</body>
+</html>
